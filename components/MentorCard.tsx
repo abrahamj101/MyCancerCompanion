@@ -17,6 +17,7 @@ interface Mentor {
 interface MentorCardProps {
   mentor: Mentor;
   onRequestConnection: (mentorId: string) => void;
+  onChatPress: (mentorId: string) => void;
 }
 
 // Helper function to get initials from name
@@ -38,9 +39,17 @@ const getBadgeColor = (yearsSurvivor: string) => {
   return { bg: 'bg-blue-400', text: 'text-blue-900' };
 };
 
-export default function MentorCard({ mentor, onRequestConnection }: MentorCardProps) {
+export default function MentorCard({ mentor, onRequestConnection, onChatPress }: MentorCardProps) {
   const badgeColors = getBadgeColor(mentor.yearsSurvivor);
   const initials = getInitials(mentor.name);
+
+  const handleButtonPress = () => {
+    if (mentor.connectionStatus === 'connected') {
+      onChatPress(mentor.id);
+    } else if (mentor.connectionStatus === 'new') {
+      onRequestConnection(mentor.id);
+    }
+  };
 
   return (
     <View className="bg-white rounded-xl p-5 mb-4 border border-gray-200 shadow-sm">
@@ -110,23 +119,22 @@ export default function MentorCard({ mentor, onRequestConnection }: MentorCardPr
 
       {/* Action Button */}
       <TouchableOpacity
-        onPress={() => onRequestConnection(mentor.id)}
-        disabled={mentor.connectionStatus !== 'new'}
-        className={`mt-2 rounded-lg py-3 px-4 min-h-[44px] ${
-          mentor.connectionStatus === 'new'
-            ? 'bg-blue-600 active:bg-blue-700'
-            : mentor.connectionStatus === 'pending'
+        onPress={handleButtonPress}
+        disabled={mentor.connectionStatus === 'pending'}
+        className={`mt-2 rounded-lg py-3 px-4 min-h-[44px] ${mentor.connectionStatus === 'new'
+          ? 'bg-blue-600 active:bg-blue-700'
+          : mentor.connectionStatus === 'pending'
             ? 'bg-gray-400'
-            : 'bg-green-600'
-        }`}>
+            : 'bg-green-600 active:bg-green-700'
+          }`}>
         <View className="flex-row items-center justify-center">
           <MessageCircle size={20} color="#ffffff" />
           <Text className="text-lg font-semibold text-white ml-2">
             {mentor.connectionStatus === 'new'
               ? 'Request Connection'
               : mentor.connectionStatus === 'pending'
-              ? 'Pending...'
-              : 'Connected'}
+                ? 'Pending...'
+                : 'Chat Now'}
           </Text>
         </View>
       </TouchableOpacity>

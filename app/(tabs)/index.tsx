@@ -1,7 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Calendar, Clock, Edit, MapPin, Plus } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface AppointmentDetails {
@@ -19,9 +19,23 @@ interface Appointment {
   time: string;
   location: string;
   type: string;
+  address?: string;
   details?: AppointmentDetails;
   dateTime?: Date; // Store actual Date object for editing
 }
+
+// Helper function to open maps
+const openMap = (locationName: string, address: string) => {
+  const query = encodeURIComponent(address);
+  const url = Platform.select({
+    ios: `maps:0,0?q=${query}`,
+    android: `geo:0,0?q=${query}`,
+  });
+
+  if (url) {
+    Linking.openURL(url).catch((err) => console.error('An error occurred', err));
+  }
+};
 
 // Helper function to format date for display
 const formatDateDisplay = (date: Date): string => {
@@ -56,7 +70,7 @@ const getInitialAppointments = (): Appointment[] => {
   const dec5 = new Date(2025, 11, 5, 10, 0, 0);
   const dec10 = new Date(2025, 11, 10, 9, 0, 0);
   const dec15 = new Date(2025, 11, 15, 8, 30, 0);
-  
+
   // Additional appointments
   const dec18 = new Date(2025, 11, 18, 7, 0, 0); // Early morning blood work
   const dec22 = new Date(2025, 11, 22, 11, 0, 0); // Next week oncologist
@@ -69,7 +83,8 @@ const getInitialAppointments = (): Appointment[] => {
       title: 'MRI Scan',
       date: formatDateDisplay(tomorrow),
       time: formatTimeDisplay(tomorrow),
-      location: 'City Medical Center - Imaging Department',
+      location: 'Houston Methodist Hospital',
+      address: '6565 Fannin St, Houston, TX 77030',
       type: 'MRI',
       dateTime: tomorrow,
       details: {
@@ -85,7 +100,8 @@ const getInitialAppointments = (): Appointment[] => {
       title: 'Oncology Consultation',
       date: formatDateDisplay(dec5),
       time: formatTimeDisplay(dec5),
-      location: 'Dr. Smith\'s Office',
+      location: 'Houston Methodist Outpatient Center',
+      address: '6445 Main St, Houston, TX 77030',
       type: 'Checkup',
       dateTime: dec5,
       details: {
@@ -101,7 +117,8 @@ const getInitialAppointments = (): Appointment[] => {
       title: 'Chemotherapy Session',
       date: formatDateDisplay(dec10),
       time: formatTimeDisplay(dec10),
-      location: 'Cancer Treatment Center',
+      location: 'MD Anderson Cancer Center',
+      address: '1515 Holcombe Blvd, Houston, TX 77030',
       type: 'Chemo',
       dateTime: dec10,
       details: {
@@ -117,7 +134,8 @@ const getInitialAppointments = (): Appointment[] => {
       title: 'Follow-up Blood Work',
       date: formatDateDisplay(dec15),
       time: formatTimeDisplay(dec15),
-      location: 'Lab Services - Main Building',
+      location: 'Houston Methodist Sugar Land',
+      address: '16655 Southwest Fwy, Sugar Land, TX 77479',
       type: 'Checkup',
       dateTime: dec15,
       details: {
@@ -133,7 +151,8 @@ const getInitialAppointments = (): Appointment[] => {
       title: 'Blood Work',
       date: formatDateDisplay(dec18),
       time: formatTimeDisplay(dec18),
-      location: 'Lab Services - Main Building',
+      location: 'Smith Tower',
+      address: '6550 Fannin St, Houston, TX 77030',
       type: 'Checkup',
       dateTime: dec18,
       details: {
@@ -149,7 +168,8 @@ const getInitialAppointments = (): Appointment[] => {
       title: 'Oncologist Consult',
       date: formatDateDisplay(dec22),
       time: formatTimeDisplay(dec22),
-      location: 'Oncology Department',
+      location: 'Houston Methodist Willowbrook',
+      address: '18220 State Hwy 249, Houston, TX 77070',
       type: 'Checkup',
       dateTime: dec22,
       details: {
@@ -165,7 +185,8 @@ const getInitialAppointments = (): Appointment[] => {
       title: 'Chemotherapy Cycle 2',
       date: formatDateDisplay(dec28),
       time: formatTimeDisplay(dec28),
-      location: 'Cancer Treatment Center',
+      location: 'MD Anderson Cancer Center',
+      address: '1515 Holcombe Blvd, Houston, TX 77030',
       type: 'Chemo',
       dateTime: dec28,
       details: {
@@ -182,6 +203,7 @@ const getInitialAppointments = (): Appointment[] => {
       date: formatDateDisplay(jan3),
       time: formatTimeDisplay(jan3),
       location: 'Nutrition & Wellness Center',
+      address: '13300 Hargrave Rd, Houston, TX 77070',
       type: 'Checkup',
       dateTime: jan3,
       details: {
@@ -201,7 +223,7 @@ export default function AppointmentsScreen() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
-  
+
   // Form state for add/edit appointment
   const [formTitle, setFormTitle] = useState('');
   const [formDoctor, setFormDoctor] = useState('');
@@ -273,7 +295,24 @@ export default function AppointmentsScreen() {
   };
 
   const handleSaveAppointment = () => {
-    if (!formTitle.trim() || !formLocation.trim()) {
+    // 1. Empty Fields Check
+    if (!formTitle.trim() || !formLocation.trim() || !formType.trim() || !formDoctor.trim()) {
+      Alert.alert('Missing Info', 'Please fill in all required fields (Title, Location, Type, Doctor Name).');
+      return;
+    }
+
+    // 2. Past Date Check
+    if (formDateTime < new Date()) {
+      Alert.alert('Invalid Date', 'Upcoming appointments must be in the future.');
+      return;
+    }
+
+    // 3. Address Check
+    if (!formLocation.includes(',')) {
+      Alert.alert(
+        'Check Address',
+        "Please include the City and State (e.g., 'Houston, TX') so the map link works correctly."
+      );
       return;
     }
 
@@ -283,6 +322,8 @@ export default function AppointmentsScreen() {
       date: formatDateDisplay(formDateTime),
       time: formatTimeDisplay(formDateTime),
       location: formLocation.trim(),
+      // Use formLocation as address if it's newor updated, assuming it passed validation
+      address: editingAppointment?.address || formLocation.trim(),
       type: formType,
       dateTime: formDateTime,
       details: {
@@ -302,14 +343,34 @@ export default function AppointmentsScreen() {
       setAppointments([...appointments, newAppointment]);
     }
 
+    Alert.alert('Success', 'Appointment added!');
     setShowEditModal(false);
     setEditingAppointment(null);
   };
 
   const handleDeleteAppointment = (appointmentId: string) => {
-    setAppointments(appointments.filter((apt) => apt.id !== appointmentId));
-    setShowDetailsModal(false);
-    setSelectedAppointment(null);
+    Alert.alert(
+      'Delete Appointment?',
+      'Are you sure you want to remove this appointment?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setAppointments((prev) => prev.filter((apt) => apt.id !== appointmentId));
+            setShowEditModal(false);
+            setEditingAppointment(null);
+            setShowDetailsModal(false);
+            setSelectedAppointment(null);
+            Alert.alert('Success', 'The appointment has been removed.');
+          },
+        },
+      ]
+    );
   };
 
   const handleDateChange = (event: any, date?: Date) => {
@@ -354,7 +415,7 @@ export default function AppointmentsScreen() {
   const futureAppointments = getFutureAppointments();
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       {/* Header with Add button */}
       <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
         <Text className="text-2xl font-bold text-gray-900">Your Care Plan</Text>
@@ -503,9 +564,20 @@ export default function AppointmentsScreen() {
                       </View>
                       <View className="flex-row items-start mb-2">
                         <MapPin size={20} color="#6b7280" />
-                        <Text className="text-lg text-gray-700 ml-2 flex-1">
-                          {selectedAppointment.location}
-                        </Text>
+                        {selectedAppointment.address ? (
+                          <TouchableOpacity
+                            onPress={() => openMap(selectedAppointment.location, selectedAppointment.address!)}
+                            className="ml-2 flex-1 flex-row items-center flex-wrap">
+                            <Text className="text-lg text-blue-600 underline">
+                              {selectedAppointment.location}
+                            </Text>
+                            <MapPin size={16} color="#2563eb" style={{ marginLeft: 4 }} />
+                          </TouchableOpacity>
+                        ) : (
+                          <Text className="text-lg text-gray-700 ml-2 flex-1">
+                            {selectedAppointment.location}
+                          </Text>
+                        )}
                       </View>
                     </View>
 
@@ -598,13 +670,11 @@ export default function AppointmentsScreen() {
                         <TouchableOpacity
                           key={type}
                           onPress={() => setFormType(type)}
-                          className={`px-4 py-2 rounded-lg mr-2 mb-2 min-h-[44px] justify-center ${
-                            formType === type ? 'bg-blue-600' : 'bg-gray-200'
-                          }`}>
-                          <Text
-                            className={`text-base font-medium ${
-                              formType === type ? 'text-white' : 'text-gray-700'
+                          className={`px-4 py-2 rounded-lg mr-2 mb-2 min-h-[44px] justify-center ${formType === type ? 'bg-blue-600' : 'bg-gray-200'
                             }`}>
+                          <Text
+                            className={`text-base font-medium ${formType === type ? 'text-white' : 'text-gray-700'
+                              }`}>
                             {type}
                           </Text>
                         </TouchableOpacity>

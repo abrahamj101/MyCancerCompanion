@@ -13,12 +13,17 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: isDark ? '#3b82f6' : '#2563eb',
         tabBarInactiveTintColor: isDark ? '#6b7280' : '#9ca3af',
+        tabBarLabelStyle: {
+          marginTop: 6,
+          fontSize: 12,
+          fontWeight: '600',
+        },
         tabBarStyle: {
           backgroundColor: isDark ? '#1f2937' : '#ffffff',
           borderTopColor: isDark ? '#374151' : '#e5e7eb',
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 65,
+          paddingBottom: 30,
+          paddingTop: 10,
+          height: 100,
         },
         headerShown: useClientOnlyValue(false, true),
         headerStyle: {
@@ -31,7 +36,7 @@ export default function TabLayout() {
         options={{
           title: 'Appointments',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Calendar size={size || 24} color={color} />,
+          tabBarIcon: ({ color }) => <Calendar size={40} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -39,7 +44,7 @@ export default function TabLayout() {
         options={{
           title: 'Log',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <ClipboardPen size={size || 24} color={color} />,
+          tabBarIcon: ({ color }) => <ClipboardPen size={40} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -47,7 +52,7 @@ export default function TabLayout() {
         options={{
           title: 'Community',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Users size={size || 24} color={color} />,
+          tabBarIcon: ({ color }) => <Users size={40} color={color} />,
         }}
       />
     </Tabs>

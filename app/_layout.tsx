@@ -8,10 +8,13 @@ import 'react-native-reanimated';
 import '../global.css';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { signInAnonymously } from 'firebase/auth';
+import { FIREBASE_AUTH } from '../firebaseConfig';
+
 
 export {
-    // Catch any errors thrown by the Layout component.
-    ErrorBoundary
+  // Catch any errors thrown by the Layout component.
+  ErrorBoundary
 } from 'expo-router';
 
 export const unstable_settings = {
@@ -38,6 +41,21 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  // Anonymous Firebase Authentication
+  useEffect(() => {
+    const authenticateAnonymously = async () => {
+      try {
+        const userCredential = await signInAnonymously(FIREBASE_AUTH);
+        console.log('✅ Anonymous user signed in successfully');
+        console.log('User UID:', userCredential.user.uid);
+      } catch (error) {
+        console.error('❌ Error signing in anonymously:', error);
+      }
+    };
+
+    authenticateAnonymously();
+  }, []);
 
   if (!loaded) {
     return null;

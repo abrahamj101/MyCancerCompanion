@@ -1,5 +1,6 @@
 import MentorCard from '@/components/MentorCard';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { Camera, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -88,9 +89,10 @@ const initialMentors: Mentor[] = [
 ];
 
 export default function CommunityScreen() {
+  const router = useRouter();
   const [mentors, setMentors] = useState<Mentor[]>(initialMentors);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  
+
   // User Profile state
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: 'John Doe',
@@ -103,15 +105,24 @@ export default function CommunityScreen() {
     image: null,
   });
 
+
   const handleRequestConnection = (mentorId: string) => {
+    // Auto-accept for MVP/Demo - skip pending state
     setMentors(
       mentors.map((mentor) =>
         mentor.id === mentorId
-          ? { ...mentor, connectionStatus: 'pending' as const }
+          ? { ...mentor, connectionStatus: 'connected' as const }
           : mentor
       )
     );
-    Alert.alert('Connection Request Sent!', 'Your request has been sent to the mentor. They will respond soon.');
+    Alert.alert('Connection Established!', 'You are now connected! You can start chatting.');
+  };
+
+  const handleChatPress = (mentorId: string) => {
+    router.push({
+      pathname: '/chat/[id]',
+      params: { id: mentorId },
+    } as any);
   };
 
   // Helper function to get initials from name
@@ -150,7 +161,7 @@ export default function CommunityScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       {/* Header with User Profile button */}
       <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
         <Text className="text-2xl font-bold text-gray-900">Find a Mentor</Text>
@@ -205,7 +216,7 @@ export default function CommunityScreen() {
                       if (!trimmedHobby) return null;
                       return (
                         <View
-                          key={`hobby-${index}-${trimmedHobby}`} 
+                          key={`hobby-${index}-${trimmedHobby}`}
                           className="px-2 py-1 bg-gray-100 rounded-full mr-2 mb-1">
                           <Text className="text-sm text-gray-700">{trimmedHobby}</Text>
                         </View>
@@ -222,6 +233,7 @@ export default function CommunityScreen() {
               key={mentor.id}
               mentor={mentor}
               onRequestConnection={handleRequestConnection}
+              onChatPress={handleChatPress}
             />
           ))}
 
