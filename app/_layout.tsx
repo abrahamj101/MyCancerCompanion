@@ -1,15 +1,14 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import '../global.css';
 
 import { useColorScheme } from '@/components/useColorScheme';
-import { signInAnonymously } from 'firebase/auth';
-import { FIREBASE_AUTH } from '../firebaseConfig';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 
 
 export {
@@ -42,35 +41,51 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  // Anonymous Firebase Authentication
-  useEffect(() => {
-    const authenticateAnonymously = async () => {
-      try {
-        const userCredential = await signInAnonymously(FIREBASE_AUTH);
-        console.log('✅ Anonymous user signed in successfully');
-        console.log('User UID:', userCredential.user.uid);
-      } catch (error) {
-        console.error('❌ Error signing in anonymously:', error);
-      }
-    };
-
-    authenticateAnonymously();
-  }, []);
-
   if (!loaded) {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <AuthProvider>
+      <RootLayoutNav />
+    </AuthProvider>
+  );
 }
 
 function RootLayoutNav() {
+  const { profileComplete, isLoading } = useAuth();
   const colorScheme = useColorScheme();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    // If we're not ready, do nothing
+    // profileComplete is boolean (true/false) so it's ready
+
+    const inTabsGroup = segments[0] === '(tabs)';
+    const inOnboarding = segments[0] === 'onboarding';
+
+    if (profileComplete === false && !inOnboarding) {
+      // Redirect to onboarding if profile is incomplete
+      router.replace('/onboarding');
+    } else if (profileComplete === true && inOnboarding) {
+      // Redirect to tabs if profile is complete (and user is trying to view onboarding)
+      router.replace('/(tabs)');
+    }
+  }, [profileComplete, segments, isLoading]);
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>

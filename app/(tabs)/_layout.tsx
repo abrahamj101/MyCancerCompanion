@@ -1,4 +1,3 @@
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { useColorScheme } from '@/components/useColorScheme';
 import { Tabs } from 'expo-router';
 import { Calendar, ClipboardPen, Users } from 'lucide-react-native';
@@ -25,7 +24,7 @@ export default function TabLayout() {
           paddingTop: 10,
           height: 100,
         },
-        headerShown: useClientOnlyValue(false, true),
+        headerShown: false, // Remove (tabs) header
         headerStyle: {
           backgroundColor: isDark ? '#111827' : '#ffffff',
         },

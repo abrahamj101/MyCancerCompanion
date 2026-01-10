@@ -1,93 +1,183 @@
-import { Award, Heart, MessageCircle } from 'lucide-react-native';
+import { User } from '@/services/UserService';
+import { ConnectionStatus } from '@/types';
+import { Award, Heart, MessageCircle, UserCheck, UserMinus, X } from 'lucide-react-native';
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-interface Mentor {
-  id: string;
-  name: string;
-  age: number;
-  cancerType: string;
-  yearsSurvivor: string;
-  bio: string;
-  hobbies: string[];
-  availability: string;
-  connectionStatus: 'new' | 'pending' | 'connected';
+// HIPAA-compliant Mentor interface (extends Firebase User schema)
+interface Mentor extends User {
+  connectionStatus: ConnectionStatus;
+  requestId?: string;
+  chatId?: string;
 }
 
 interface MentorCardProps {
   mentor: Mentor;
   onRequestConnection: (mentorId: string) => void;
-  onChatPress: (mentorId: string) => void;
+  onCancelRequest: (requestId: string) => void;
+  onAcceptRequest: (requestId: string) => void;
+  onRejectRequest: (requestId: string) => void;
+  onChatPress: (mentorId: string, chatId?: string) => void;
 }
 
-// Helper function to get initials from name
-const getInitials = (name: string) => {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-};
+// Helper function to determine badge color based on diagnosis stage
+const getBadgeColor = (diagnosisStage: string) => {
+  // Check if it's a survivor (contains "year" or "survivor")
+  const isSurvivor = diagnosisStage.toLowerCase().includes('year') ||
+    diagnosisStage.toLowerCase().includes('survivor');
 
-// Helper function to determine badge color based on years
-const getBadgeColor = (yearsSurvivor: string) => {
-  const years = parseInt(yearsSurvivor);
-  if (years >= 5) {
-    return { bg: 'bg-yellow-400', text: 'text-yellow-900' };
-  }
-  return { bg: 'bg-blue-400', text: 'text-blue-900' };
-};
-
-export default function MentorCard({ mentor, onRequestConnection, onChatPress }: MentorCardProps) {
-  const badgeColors = getBadgeColor(mentor.yearsSurvivor);
-  const initials = getInitials(mentor.name);
-
-  const handleButtonPress = () => {
-    if (mentor.connectionStatus === 'connected') {
-      onChatPress(mentor.id);
-    } else if (mentor.connectionStatus === 'new') {
-      onRequestConnection(mentor.id);
+  if (isSurvivor) {
+    // Extract years if possible
+    const years = parseInt(diagnosisStage);
+    if (!isNaN(years) && years >= 5) {
+      return { bg: 'bg-yellow-400', text: 'text-yellow-900' };
     }
+    return { bg: 'bg-blue-400', text: 'text-blue-900' };
+  }
+
+  // For current patients (e.g., "Stage 2")
+  return { bg: 'bg-purple-400', text: 'text-purple-900' };
+};
+
+const styles = StyleSheet.create({
+  buttonBase: {
+    marginTop: 8,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    minHeight: 44,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginLeft: 8,
+  },
+});
+
+export default function MentorCard({
+  mentor,
+  onRequestConnection,
+  onCancelRequest,
+  onAcceptRequest,
+  onRejectRequest,
+  onChatPress
+}: MentorCardProps) {
+  const badgeColors = getBadgeColor(mentor.diagnosisStage);
+
+  // Debug log
+  console.log(`MentorCard ${mentor.firstName}: status=${mentor.connectionStatus}, requestId=${mentor.requestId}`);
+
+  // Render button based on connection status
+  const renderButton = () => {
+    console.log(`[SWITCH] ${mentor.firstName}: status="${mentor.connectionStatus}", type=${typeof mentor.connectionStatus}`);
+
+    if (mentor.connectionStatus === 'none') {
+      console.log(`[SWITCH] Rendering: Connect & Chat button`);
+      return (
+        <TouchableOpacity
+          onPress={() => onChatPress(mentor.uid)}
+          style={[styles.buttonBase, { backgroundColor: '#2563eb' }]}>
+          <View style={styles.buttonRow}>
+            <MessageCircle size={20} color="#ffffff" />
+            <Text style={styles.buttonText}>Connect & Chat</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    if (mentor.connectionStatus === 'pending_sent') {
+      console.log(`[SWITCH] Rendering: Cancel Request button`);
+      return (
+        <TouchableOpacity
+          onPress={() => mentor.requestId && onCancelRequest(mentor.requestId)}
+          style={[styles.buttonBase, { backgroundColor: '#f97316' }]}>
+          <View style={styles.buttonRow}>
+            <UserMinus size={20} color="#ffffff" />
+            <Text style={styles.buttonText}>Cancel Request</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    if (mentor.connectionStatus === 'pending_received') {
+      return (
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <TouchableOpacity
+            onPress={() => mentor.requestId && onAcceptRequest(mentor.requestId)}
+            style={[styles.buttonBase, { flex: 1, backgroundColor: '#16a34a', marginTop: 0 }]}>
+            <View style={styles.buttonRow}>
+              <UserCheck size={20} color="#ffffff" />
+              <Text style={styles.buttonText}>Accept</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => mentor.requestId && onRejectRequest(mentor.requestId)}
+            style={[styles.buttonBase, { flex: 1, backgroundColor: '#dc2626', marginTop: 0 }]}>
+            <View style={styles.buttonRow}>
+              <X size={20} color="#ffffff" />
+              <Text style={styles.buttonText}>Reject</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (mentor.connectionStatus === 'connected') {
+      return (
+        <TouchableOpacity
+          onPress={() => onChatPress(mentor.uid, mentor.chatId)}
+          style={[styles.buttonBase, { backgroundColor: '#16a34a' }]}>
+          <View style={styles.buttonRow}>
+            <MessageCircle size={20} color="#ffffff" />
+            <Text style={styles.buttonText}>Chat Now</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    // Default fallback
+    return (
+      <View style={[styles.buttonBase, { backgroundColor: '#9ca3af' }]}>
+        <View style={styles.buttonRow}>
+          <Text style={[styles.buttonText, { marginLeft: 0 }]}>Loading...</Text>
+        </View>
+      </View>
+    );
   };
+
 
   return (
     <View className="bg-white rounded-xl p-5 mb-4 border border-gray-200 shadow-sm">
-      <View className="flex-row items-start mb-4">
-        {/* Avatar with initials */}
-        <View className="w-16 h-16 rounded-full bg-blue-100 items-center justify-center mr-4">
-          <Text className="text-xl font-bold text-blue-700">
-            {initials}
+      {/* Mentor Info - No Avatar (HIPAA Compliant) */}
+      <View className="mb-4">
+        <View className="flex-row items-center mb-2">
+          <Text className="text-xl font-bold text-gray-900 mr-2">
+            {mentor.firstName}
           </Text>
+          {/* Age is HIDDEN per HIPAA requirements */}
         </View>
 
-        {/* Mentor Info */}
-        <View className="flex-1">
-          <View className="flex-row items-center mb-2">
-            <Text className="text-xl font-bold text-gray-900 mr-2">
-              {mentor.name}
-            </Text>
-            <Text className="text-lg text-gray-600">
-              {mentor.age}
+        {/* Diagnosis Stage Badge */}
+        <View className="flex-row items-center mb-3">
+          <View
+            className={`px-3 py-1.5 rounded-full ${badgeColors.bg} mr-2 flex-row items-center`}>
+            <Award size={16} color={badgeColors.text.includes('yellow') ? '#92400e' : badgeColors.text.includes('blue') ? '#1e3a8a' : '#581c87'} />
+            <Text
+              className={`text-sm font-semibold ml-1 ${badgeColors.text}`}>
+              {mentor.diagnosisStage}
             </Text>
           </View>
-
-          {/* Years Survivor Badge */}
-          <View className="flex-row items-center mb-3">
-            <View
-              className={`px-3 py-1.5 rounded-full ${badgeColors.bg} mr-2 flex-row items-center`}>
-              <Award size={16} color={badgeColors.text.includes('yellow') ? '#92400e' : '#1e3a8a'} />
-              <Text
-                className={`text-sm font-semibold ml-1 ${badgeColors.text}`}>
-                {mentor.yearsSurvivor}
-              </Text>
-            </View>
-            <View className="flex-row items-center">
-              <Heart size={16} color="#ef4444" />
-              <Text className="text-lg text-gray-700 ml-1">
-                {mentor.availability}
-              </Text>
-            </View>
+          <View className="flex-row items-center">
+            <Heart size={16} color="#ef4444" />
+            <Text className="text-lg text-gray-700 ml-1">
+              Available for Chat
+            </Text>
           </View>
         </View>
       </View>
@@ -110,35 +200,15 @@ export default function MentorCard({ mentor, onRequestConnection, onChatPress }:
       <View className="flex-row flex-wrap mb-4">
         {mentor.hobbies.map((hobby, index) => (
           <View
-            key={index}
+            key={`${mentor.uid}-hobby-${index}`}
             className="px-3 py-1.5 bg-gray-100 rounded-full mr-2 mb-2">
             <Text className="text-base text-gray-700">{hobby}</Text>
           </View>
         ))}
       </View>
 
-      {/* Action Button */}
-      <TouchableOpacity
-        onPress={handleButtonPress}
-        disabled={mentor.connectionStatus === 'pending'}
-        className={`mt-2 rounded-lg py-3 px-4 min-h-[44px] ${mentor.connectionStatus === 'new'
-          ? 'bg-blue-600 active:bg-blue-700'
-          : mentor.connectionStatus === 'pending'
-            ? 'bg-gray-400'
-            : 'bg-green-600 active:bg-green-700'
-          }`}>
-        <View className="flex-row items-center justify-center">
-          <MessageCircle size={20} color="#ffffff" />
-          <Text className="text-lg font-semibold text-white ml-2">
-            {mentor.connectionStatus === 'new'
-              ? 'Request Connection'
-              : mentor.connectionStatus === 'pending'
-                ? 'Pending...'
-                : 'Chat Now'}
-          </Text>
-        </View>
-      </TouchableOpacity>
+      {/* Action Buttons */}
+      {renderButton()}
     </View>
   );
 }
-

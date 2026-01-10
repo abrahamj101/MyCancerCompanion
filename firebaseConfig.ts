@@ -19,7 +19,9 @@ const app = initializeApp(firebaseConfig);
 // Initialize Cloud Firestore and get a reference to the service
 export const FIREBASE_DB = getFirestore(app);
 
-// Initialize Firebase Authentication and get a reference to the service
+// Initialize Firebase Authentication
+// Note: For React Native, auth state will use memory persistence
+// To persist auth state, consider using @react-native-firebase/auth instead
 export const FIREBASE_AUTH = getAuth(app);
 
 export default app;
