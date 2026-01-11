@@ -353,6 +353,30 @@ export default function DailyLogScreen() {
             </Text>
           </TouchableOpacity>
 
+          {/* Confirm Log Button */}
+          <TouchableOpacity
+            onPress={() => {
+              const checkedSymptoms = symptoms.filter(s => s.checked);
+              if (checkedSymptoms.length === 0) {
+                Alert.alert(
+                  'No Symptoms Selected',
+                  'Please select at least one symptom before confirming.',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                Alert.alert(
+                  'Symptoms Logged! ✅',
+                  `Successfully logged ${checkedSymptoms.length} symptom${checkedSymptoms.length > 1 ? 's' : ''} for ${formatDate(selectedDate)}.`,
+                  [{ text: 'OK' }]
+                );
+              }
+            }}
+            className="bg-green-600 rounded-xl p-5 mt-4 flex-row items-center justify-center active:bg-green-700 shadow-md min-h-[44px]">
+            <Text className="text-xl font-bold text-white">
+              ✓ Confirm Log
+            </Text>
+          </TouchableOpacity>
+
           {/* AI Summary Button */}
           <TouchableOpacity
             onPress={generateSummary}

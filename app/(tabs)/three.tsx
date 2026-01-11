@@ -201,13 +201,13 @@ export default function PeerSupportScreen() {
       if (!chatId) {
         // Auto-connect / Bypass friend request
         const mentor = mentors.find((m) => m.uid === mentorId);
-        if (!mentor || !currentUserData) return;
+        if (!mentor || !currentUserData || !actualUserId) return;
 
         const { createOrGetChat } = await import('@/services/ChatService');
 
         console.log(`Creating instant chat with ${mentor.firstName}...`);
         chatId = await createOrGetChat(
-          currentUserData.uid,
+          actualUserId,  // Use the REAL user ID
           mentor.uid,
           currentUserData.firstName,
           mentor.firstName
