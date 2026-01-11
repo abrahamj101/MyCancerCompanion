@@ -1,5 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import {
+  getAuth,
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
@@ -12,7 +14,6 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
@@ -20,8 +21,8 @@ const app = initializeApp(firebaseConfig);
 export const FIREBASE_DB = getFirestore(app);
 
 // Initialize Firebase Authentication
-// Note: For React Native, auth state will use memory persistence
-// To persist auth state, consider using @react-native-firebase/auth instead
+// Note: Anonymous auth will create new users on mobile reload
+// We handle persistence by storing the UID in AsyncStorage and checking Firebase
 export const FIREBASE_AUTH = getAuth(app);
 
 export default app;

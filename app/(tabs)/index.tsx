@@ -67,15 +67,18 @@ const getInitialAppointments = (): Appointment[] => {
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(14, 0, 0, 0);
 
-  const dec5 = new Date(2025, 11, 5, 10, 0, 0);
-  const dec10 = new Date(2025, 11, 10, 9, 0, 0);
-  const dec15 = new Date(2025, 11, 15, 8, 30, 0);
+  // Dynamic date variables
+  const oneWeekFromToday = new Date();
+  oneWeekFromToday.setDate(oneWeekFromToday.getDate() + 7);
+  oneWeekFromToday.setHours(10, 0, 0, 0);
 
-  // Additional appointments
-  const dec18 = new Date(2025, 11, 18, 7, 0, 0); // Early morning blood work
-  const dec22 = new Date(2025, 11, 22, 11, 0, 0); // Next week oncologist
-  const dec28 = new Date(2025, 11, 28, 9, 30, 0); // Later this month chemo
-  const jan3 = new Date(2026, 0, 3, 14, 0, 0); // Nutritionist follow-up
+  const oneMonthFromNow = new Date();
+  oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+  oneMonthFromNow.setHours(9, 0, 0, 0);
+
+  const threeMonthsFromNow = new Date();
+  threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+  threeMonthsFromNow.setHours(14, 0, 0, 0);
 
   return [
     {
@@ -83,8 +86,8 @@ const getInitialAppointments = (): Appointment[] => {
       title: 'MRI Scan',
       date: formatDateDisplay(tomorrow),
       time: formatTimeDisplay(tomorrow),
-      location: 'Houston Methodist Hospital',
-      address: '6565 Fannin St, Houston, TX 77030',
+      location: 'Houston Methodist Sugar Land Hospital',
+      address: '16655 Southwest Fwy, Sugar Land, TX 77479',
       type: 'MRI',
       dateTime: tomorrow,
       details: {
@@ -98,12 +101,12 @@ const getInitialAppointments = (): Appointment[] => {
     {
       id: '1',
       title: 'Oncology Consultation',
-      date: formatDateDisplay(dec5),
-      time: formatTimeDisplay(dec5),
+      date: formatDateDisplay(oneWeekFromToday),
+      time: formatTimeDisplay(oneWeekFromToday),
       location: 'Houston Methodist Outpatient Center',
       address: '6445 Main St, Houston, TX 77030',
       type: 'Checkup',
-      dateTime: dec5,
+      dateTime: oneWeekFromToday,
       details: {
         doctor: 'Dr. James Smith',
         room: 'Room 304',
@@ -115,12 +118,12 @@ const getInitialAppointments = (): Appointment[] => {
     {
       id: '2',
       title: 'Chemotherapy Session',
-      date: formatDateDisplay(dec10),
-      time: formatTimeDisplay(dec10),
+      date: formatDateDisplay(oneMonthFromNow),
+      time: formatTimeDisplay(oneMonthFromNow),
       location: 'MD Anderson Cancer Center',
       address: '1515 Holcombe Blvd, Houston, TX 77030',
       type: 'Chemo',
-      dateTime: dec10,
+      dateTime: oneMonthFromNow,
       details: {
         doctor: 'Dr. Emily Rodriguez',
         room: 'Room 105',
@@ -132,12 +135,12 @@ const getInitialAppointments = (): Appointment[] => {
     {
       id: '3',
       title: 'Follow-up Blood Work',
-      date: formatDateDisplay(dec15),
-      time: formatTimeDisplay(dec15),
+      date: formatDateDisplay(oneMonthFromNow),
+      time: formatTimeDisplay(oneMonthFromNow),
       location: 'Houston Methodist Sugar Land',
       address: '16655 Southwest Fwy, Sugar Land, TX 77479',
       type: 'Checkup',
-      dateTime: dec15,
+      dateTime: oneMonthFromNow,
       details: {
         doctor: 'Lab Technician',
         room: 'Room 12',
@@ -148,30 +151,13 @@ const getInitialAppointments = (): Appointment[] => {
     },
     {
       id: '4',
-      title: 'Blood Work',
-      date: formatDateDisplay(dec18),
-      time: formatTimeDisplay(dec18),
-      location: 'Smith Tower',
-      address: '6550 Fannin St, Houston, TX 77030',
-      type: 'Checkup',
-      dateTime: dec18,
-      details: {
-        doctor: 'Lab Technician',
-        room: 'Room 8',
-        floor: 'Ground Floor',
-        duration: '20 minutes',
-        notes: 'Early morning appointment. Fasting required 12 hours prior.',
-      },
-    },
-    {
-      id: '5',
       title: 'Oncologist Consult',
-      date: formatDateDisplay(dec22),
-      time: formatTimeDisplay(dec22),
+      date: formatDateDisplay(threeMonthsFromNow),
+      time: formatTimeDisplay(threeMonthsFromNow),
       location: 'Houston Methodist Willowbrook',
       address: '18220 State Hwy 249, Houston, TX 77070',
       type: 'Checkup',
-      dateTime: dec22,
+      dateTime: threeMonthsFromNow,
       details: {
         doctor: 'Dr. James Smith',
         room: 'Room 401',
@@ -181,14 +167,14 @@ const getInitialAppointments = (): Appointment[] => {
       },
     },
     {
-      id: '6',
+      id: '5',
       title: 'Chemotherapy Cycle 2',
-      date: formatDateDisplay(dec28),
-      time: formatTimeDisplay(dec28),
+      date: formatDateDisplay(threeMonthsFromNow),
+      time: formatTimeDisplay(threeMonthsFromNow),
       location: 'MD Anderson Cancer Center',
       address: '1515 Holcombe Blvd, Houston, TX 77030',
       type: 'Chemo',
-      dateTime: dec28,
+      dateTime: threeMonthsFromNow,
       details: {
         doctor: 'Dr. Emily Rodriguez',
         room: 'Room 105',
@@ -198,14 +184,14 @@ const getInitialAppointments = (): Appointment[] => {
       },
     },
     {
-      id: '7',
+      id: '6',
       title: 'Nutritionist Follow-up',
-      date: formatDateDisplay(jan3),
-      time: formatTimeDisplay(jan3),
+      date: formatDateDisplay(threeMonthsFromNow),
+      time: formatTimeDisplay(threeMonthsFromNow),
       location: 'Nutrition & Wellness Center',
       address: '13300 Hargrave Rd, Houston, TX 77070',
       type: 'Checkup',
-      dateTime: jan3,
+      dateTime: threeMonthsFromNow,
       details: {
         doctor: 'Dr. Maria Garcia',
         room: 'Room 205',
@@ -455,14 +441,16 @@ export default function AppointmentsScreen() {
                   {upcomingAppointment.time}
                 </Text>
               </View>
-              <View className="flex-row items-start mt-3">
+              <TouchableOpacity
+                onPress={() => openMap(upcomingAppointment.location, upcomingAppointment.address || upcomingAppointment.location)}
+                className="flex-row items-start mt-3">
                 <View className="mr-2 mt-0.5">
                   <MapPin size={20} color="#1e40af" />
                 </View>
-                <Text className="text-lg text-gray-700 flex-1">
+                <Text className="text-lg text-blue-800 underline flex-1">
                   {upcomingAppointment.location}
                 </Text>
-              </View>
+              </TouchableOpacity>
               <View className="mt-4 pt-4 border-t border-blue-200">
                 <Text className="text-base text-blue-700 font-medium">
                   Type: {upcomingAppointment.type}
@@ -513,14 +501,16 @@ export default function AppointmentsScreen() {
                   {appointment.time}
                 </Text>
               </View>
-              <View className="flex-row items-start mt-2">
+              <TouchableOpacity
+                onPress={() => openMap(appointment.location, appointment.address || appointment.location)}
+                className="flex-row items-start mt-2">
                 <View className="mr-2 mt-0.5">
                   <MapPin size={18} color="#6b7280" />
                 </View>
-                <Text className="text-lg text-gray-600 flex-1">
+                <Text className="text-lg text-blue-600 underline flex-1">
                   {appointment.location}
                 </Text>
-              </View>
+              </TouchableOpacity>
             </TouchableOpacity>
           ))}
 

@@ -11,7 +11,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FIREBASE_AUTH } from '../firebaseConfig';
+import { useAuth } from '../context/AuthContext';
 import { getUserByUid, saveUserProfile } from '../services/UserService';
 import { User } from '../types';
 
@@ -50,6 +50,7 @@ const SUPPORT_NEEDS = [
 
 export default function ProfileEditScreen() {
     const router = useRouter();
+    const { actualUserId, signOut } = useAuth(); // Get the REAL user ID and signOut function
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [userData, setUserData] = useState<User | null>(null);
@@ -72,14 +73,13 @@ export default function ProfileEditScreen() {
     const loadUserProfile = async () => {
         try {
             setLoading(true);
-            const currentUser = FIREBASE_AUTH.currentUser;
-            if (!currentUser) {
+            if (!actualUserId) {
                 Alert.alert('Error', 'You must be logged in to edit your profile.');
                 router.back();
                 return;
             }
 
-            const user = await getUserByUid(currentUser.uid);
+            const user = await getUserByUid(actualUserId);
             if (!user || !user.profileComplete) {
                 Alert.alert(
                     'Profile Incomplete',
@@ -151,8 +151,7 @@ export default function ProfileEditScreen() {
 
             setSaving(true);
 
-            const currentUser = FIREBASE_AUTH.currentUser;
-            if (!currentUser || !userData) {
+            if (!actualUserId || !userData) {
                 Alert.alert('Error', 'No user logged in');
                 return;
             }
@@ -460,11 +459,36 @@ export default function ProfileEditScreen() {
 
                 {/* Save Button (Bottom) */}
                 <TouchableOpacity
-                    className="bg-blue-500 rounded-lg py-4 mb-8"
+                    className="bg-blue-500 rounded-lg py-4 mb-4"
                     onPress={handleSave}
                     disabled={saving}>
                     <Text className="text-center text-white font-semibold text-lg">
                         {saving ? 'Saving...' : 'Save Changes'}
+                    </Text>
+                </TouchableOpacity>
+
+                {/* Sign Out Button */}
+                <TouchableOpacity
+                    className="bg-red-50 border-2 border-red-500 rounded-lg py-4 mb-8"
+                    onPress={async () => {
+                        Alert.alert(
+                            'Sign Out',
+                            'This will clear your local session. Your profile will remain saved in the cloud.',
+                            [
+                                { text: 'Cancel', style: 'cancel' },
+                                {
+                                    text: 'Sign Out',
+                                    style: 'destructive',
+                                    onPress: async () => {
+                                        await signOut();
+                                        router.replace('/onboarding');
+                                    }
+                                }
+                            ]
+                        );
+                    }}>
+                    <Text className="text-center text-red-600 font-semibold text-lg">
+                        Sign Out
                     </Text>
                 </TouchableOpacity>
             </ScrollView>

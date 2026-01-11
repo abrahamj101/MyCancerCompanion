@@ -42,7 +42,7 @@ const SUPPORT_NEEDS = [
 ];
 
 export default function OnboardingScreen() {
-    const { setProfileComplete } = useAuth();
+    const { setProfileComplete, refreshAuth } = useAuth();
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
@@ -142,6 +142,9 @@ export default function OnboardingScreen() {
             // Update global state to prevent infinite loop
             setProfileComplete(true);
 
+            // Refresh auth context to update actualUserId
+            await refreshAuth();
+
             router.replace('/(tabs)');
         } catch (error) {
             console.error('Error saving profile:', error);
@@ -181,9 +184,33 @@ export default function OnboardingScreen() {
         <View className="flex-1 bg-white">
             {/* Progress Bar */}
             <View className="bg-blue-500 pt-12 pb-4 px-6">
-                <Text className="text-white text-lg font-semibold mb-2">
-                    Step {step} of {totalSteps}
-                </Text>
+                <View className="flex-row justify-between items-center mb-2">
+                    <Text className="text-white text-lg font-semibold">
+                        Step {step} of {totalSteps}
+                    </Text>
+                    {/* Diagnostic Button */}
+                    <TouchableOpacity
+                        onPress={async () => {
+                            Alert.alert(
+                                'Clear All Data?',
+                                'This will clear all stored data and restart the app. You will need to complete onboarding again.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                        text: 'Clear & Restart',
+                                        style: 'destructive',
+                                        onPress: async () => {
+                                            await storage.removeItem('onboardingCompletedForUID');
+                                            Alert.alert('Data Cleared', 'Please reload the app.');
+                                        }
+                                    }
+                                ]
+                            );
+                        }}
+                        className="bg-red-500/20 px-3 py-1 rounded">
+                        <Text className="text-red-600 text-xs font-semibold">Reset</Text>
+                    </TouchableOpacity>
+                </View>
                 <View className="h-2 bg-blue-300 rounded-full">
                     <View
                         className="h-2 bg-white rounded-full"

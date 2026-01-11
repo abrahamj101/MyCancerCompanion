@@ -1,5 +1,5 @@
 import MentorCard from '@/components/MentorCard';
-import { FIREBASE_AUTH } from '@/firebaseConfig';
+import { useAuth } from '@/context/AuthContext';
 import { getConnectionStatus, sendFriendRequest } from '@/services/FriendRequestService';
 import { User as UserType, getMatchingUsers, getUserByUid } from '@/services/UserService';
 import { ConnectionStatus, MentorWithStatus } from '@/types';
@@ -17,6 +17,7 @@ interface Mentor extends MentorWithStatus {
 
 export default function PeerSupportScreen() {
   const router = useRouter();
+  const { actualUserId } = useAuth(); // Get the REAL user ID
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,14 +32,13 @@ export default function PeerSupportScreen() {
     try {
       setLoading(true);
 
-      // Get current user data
-      const currentUser = FIREBASE_AUTH.currentUser;
-      if (!currentUser) {
+      // Get current user data using the REAL user ID from AsyncStorage
+      if (!actualUserId) {
         Alert.alert('Error', 'You must be logged in to view peer support.');
         return;
       }
 
-      const userData = await getUserByUid(currentUser.uid);
+      const userData = await getUserByUid(actualUserId);
       if (!userData || !userData.profileComplete) {
         Alert.alert(
           'Profile Incomplete',
@@ -65,7 +65,7 @@ export default function PeerSupportScreen() {
       // Get connection status for each mentor
       const mentorsWithStatus: Mentor[] = await Promise.all(
         fetchedMentors.map(async (mentor) => {
-          const connectionInfo = await getConnectionStatus(currentUser.uid, mentor.uid);
+          const connectionInfo = await getConnectionStatus(actualUserId, mentor.uid);
           return {
             ...mentor,
             connectionStatus: connectionInfo.status,
@@ -158,15 +158,14 @@ export default function PeerSupportScreen() {
       const mentor = mentors.find((m) => m.uid === mentorId);
       if (!mentor) return;
 
-      const currentUser = FIREBASE_AUTH.currentUser;
-      if (!currentUser || !currentUserData) {
+      if (!actualUserId || !currentUserData) {
         Alert.alert('Error', 'You must be logged in to connect with mentors.');
         return;
       }
 
       // Send friend request
       const requestId = await sendFriendRequest(
-        currentUser.uid,
+        actualUserId,
         currentUserData.firstName,
         mentorId,
         mentor.firstName

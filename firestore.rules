@@ -5,7 +5,15 @@ service cloud.firestore {
     // Users collection - anyone authenticated can read, users can only write their own
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      // Allow write if:
+      // 1. The path userId matches the authenticated user's UID, OR
+      // 2. The document's uid field matches the authenticated user's UID, OR
+      // 3. The path userId matches the document's uid field (for updates using stored UID)
+      allow write: if request.auth != null && (
+        request.auth.uid == userId ||
+        (resource != null && resource.data.uid == request.auth.uid) ||
+        (request.resource != null && request.resource.data.uid == userId)
+      );
     }
     
     // Friend requests - users can read their own requests and create new ones
