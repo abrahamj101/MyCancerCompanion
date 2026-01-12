@@ -545,7 +545,7 @@ export default function ProfileEditScreen() {
                                     style: 'destructive',
                                     onPress: async () => {
                                         await signOut();
-                                        router.replace('/onboarding');
+                                        // signOut already redirects to splash
                                     }
                                 }
                             ]

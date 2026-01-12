@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import {
-  getAuth,
+  browserLocalPersistence,
+  initializeAuth
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -20,9 +21,9 @@ const app = initializeApp(firebaseConfig);
 // Initialize Cloud Firestore and get a reference to the service
 export const FIREBASE_DB = getFirestore(app);
 
-// Initialize Firebase Authentication
-// Note: Anonymous auth will create new users on mobile reload
-// We handle persistence by storing the UID in AsyncStorage and checking Firebase
-export const FIREBASE_AUTH = getAuth(app);
+// Initialize Firebase Authentication with persistence
+export const FIREBASE_AUTH = initializeAuth(app, {
+  persistence: browserLocalPersistence
+});
 
 export default app;

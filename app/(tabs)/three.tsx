@@ -242,13 +242,14 @@ export default function PeerSupportScreen() {
   };
 
   const handleProfilePress = () => {
+    console.log('🔘 Profile icon pressed! Navigating to /profile-edit...');
     router.push('/profile-edit');
   };
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       {/* Header */}
-      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200 bg-white">
+      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200 bg-white z-50">
         <View className="flex-row items-center flex-1">
           <Image
             source={require('../../MyCancerCompanion APP LOGO.png')}
@@ -259,7 +260,9 @@ export default function PeerSupportScreen() {
         </View>
         <TouchableOpacity
           onPress={handleProfilePress}
-          className="p-2 min-h-[44px] min-w-[44px] justify-center items-center">
+          className="p-2 min-h-[44px] min-w-[44px] justify-center items-center active:opacity-50"
+          style={{ zIndex: 51 }}
+        >
           <User size={24} color="#2563eb" />
         </TouchableOpacity>
       </View>

@@ -44,25 +44,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
 
 
-
-    // Explicitly use the Expo Auth Proxy URI to match Google Console "https://" requirement
-    // We use lowercase to avoid case-sensitivity issues
+    // Use Expo auth proxy for Google OAuth
     const redirectUri = 'https://auth.expo.io/@abrahamj101/mycancercompanion';
 
-    // Google Auth configuration
-    console.log('🔧 [AuthContext] Google OAuth Config:');
-    console.log('  WEB_CLIENT_ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ? 'SET ✅' : 'MISSING ❌');
-    console.log('  Redirect URI (Calculated):', redirectUri);
-
-    console.log('👉 PLEASE ADD THIS URI TO GOOGLE CONSOLE AUTHORIZED REDIRECT URIS!');
+    // Log the redirect URI prominently
+    console.log('\n═══════════════════════════════════════════════════');
+    console.log('🔗 COPY THIS REDIRECT URI TO GOOGLE CONSOLE:');
+    console.log('   https://auth.expo.io/@abrahamj101/mycancercompanion');
+    console.log('═══════════════════════════════════════════════════');
 
     const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        // Forcing Web flow by using redirectUri and ONLY web client ID for the request
-        redirectUri: redirectUri,
-        // Native IDs kept for later production builds, but might interfere with proxy flow in generic Expo Go
         iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
         androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+        redirectUri: redirectUri,
     });
 
     // Log request object status
@@ -292,15 +287,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 console.log('✅ [AuthContext] User authenticated:', user.uid, 'Profile complete:', hasProfile);
             } else {
-                // User is signed out - check for stored UID
-                const storedUID = await storage.getItem('userUID');
-                if (!storedUID) {
-                    console.log('👤 [AuthContext] No user signed in');
-                    setIsAuthenticated(false);
-                    setActualUserId(null);
-                    setUserEmail(null);
-                    setProfileComplete(null);
-                }
+                // User is signed out from Firebase - always clear auth state
+                console.log('👤 [AuthContext] User signed out from Firebase');
+                setIsAuthenticated(false);
+                setActualUserId(null);
+                setUserEmail(null);
+                setProfileComplete(null);
+
+                // Clean up any orphaned AsyncStorage data
+                await storage.removeItem('userUID');
+                await storage.removeItem('onboardingCompletedForUID');
             }
 
             setIsLoading(false);
