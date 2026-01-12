@@ -23,7 +23,35 @@ export interface User {
     hobbies: string[];
     bio: string;
     profileComplete: boolean;
+    availableToChat: boolean; // Whether user is open to receiving chat requests
     createdAt: Timestamp | any;
+    building?: string; // Optional: Building/location (e.g., "Sweetwater Pavilion")
+    floor?: string; // Optional: Floor number (e.g., "1", "2", "3")
+}
+
+// ============================================================================
+// SYMPTOM TRACKING TYPES
+// ============================================================================
+
+export interface SymptomEntry {
+    name: string;
+    severity: number;      // 1-10 scale
+    notes?: string;        // Optional user notes
+}
+
+export interface DailySymptomLog {
+    userId: string;
+    date: string;          // "YYYY-MM-DD" format
+    timestamp: Timestamp | any;
+    symptoms: {            // Map for easy CRUD with merge: true
+        [symptomName: string]: {
+            severity: number;
+            notes?: string;
+        };
+    };
+    symptomArray: SymptomEntry[];  // Array version for LLM processing
+    overallFeeling?: number;       // Optional 1-10 scale
+    checkedSymptomCount: number;   // Number of symptoms logged
 }
 
 // ============================================================================
@@ -95,6 +123,8 @@ export interface Message {
 
 export interface MentorWithStatus extends User {
     connectionStatus: ConnectionStatus;
+    matchDetails?: string[]; // What attributes matched (e.g., "cancer type", "2 support matches")
+    matchScore?: number; // Overall match score for sorting
 }
 
 export interface ChatPreview {

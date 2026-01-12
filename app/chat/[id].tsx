@@ -1,3 +1,4 @@
+import { useAuth } from '@/context/AuthContext';
 import { createOrGetChat } from '@/services/ChatService';
 import { getUserByUid } from '@/services/UserService';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -7,11 +8,12 @@ import React, { useCallback, useLayoutEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { GiftedChat, IMessage } from 'react-native-gifted-chat';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FIREBASE_AUTH, FIREBASE_DB } from '../../firebaseConfig';
+import { FIREBASE_DB } from '../../firebaseConfig';
 
 export default function ChatScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
+    const { actualUserId } = useAuth();
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [currentUserFirstName, setCurrentUserFirstName] = useState<string>('User');
     const [mentorFirstName, setMentorFirstName] = useState<string>('');
@@ -21,33 +23,34 @@ export default function ChatScreen() {
     // Fetch current user's firstName from Firestore
     useLayoutEffect(() => {
         const loadCurrentUser = async () => {
-            const user = FIREBASE_AUTH.currentUser;
-            if (user) {
-                console.log('👤 Loading current user:', user.uid);
-                const userData = await getUserByUid(user.uid);
-                if (userData) {
-                    console.log('✅ Current user loaded:', userData.firstName);
-                    setCurrentUserFirstName(userData.firstName);
-                } else {
-                    console.warn('⚠️ Current user profile not found for:', user.uid);
-                }
+            if (!actualUserId) {
+                console.warn('⚠️ No actualUserId available');
+                return;
+            }
+
+            console.log('👤 Loading current user:', actualUserId);
+            const userData = await getUserByUid(actualUserId);
+            if (userData) {
+                console.log('✅ Current user loaded:', userData.firstName);
+                setCurrentUserFirstName(userData.firstName);
             } else {
-                console.warn('⚠️ No current user logged in');
+                console.warn('⚠️ Current user profile not found for:', actualUserId);
+                // Fallback: Use "Guest" to prevent crashes
+                setCurrentUserFirstName('Guest');
             }
         };
         loadCurrentUser();
-    }, []);
+    }, [actualUserId]);
 
     // Fetch mentor's firstName
     useLayoutEffect(() => {
         const loadMentor = async () => {
-            const currentUser = FIREBASE_AUTH.currentUser;
             if (id) {
                 let targetUid = id;
                 // If ID is composite (contains underscore), extract the OTHER uid
-                if (id.includes('_') && currentUser) {
+                if (id.includes('_') && actualUserId) {
                     const parts = id.split('_');
-                    targetUid = parts.find(part => part !== currentUser.uid) || id;
+                    targetUid = parts.find(part => part !== actualUserId) || id;
                     console.log('🔗 Composite ID detected. Target Mentor UID:', targetUid);
                 }
 
@@ -62,15 +65,18 @@ export default function ChatScreen() {
             }
         };
         loadMentor();
-    }, [id]); // Note: dependency on currentUser handled effectively by component re-render when auth changes
+    }, [id, actualUserId]);
 
     // Initialize Chat
     useLayoutEffect(() => {
         const initChat = async () => {
-            const currentUser = FIREBASE_AUTH.currentUser;
+            if (!actualUserId) {
+                console.warn('⚠️ Cannot init chat: actualUserId is null');
+                return;
+            }
 
             // Scenario 1: We already have a valid composite Chat ID passed in params
-            if (id && id.includes('_') && currentUser) {
+            if (id && id.includes('_')) {
                 // Just wait for names to load for valid UI, but we can set ID immediately
                 if (chatId !== id) {
                     console.log('🔗 Using existing Chat ID from params:', id);
@@ -82,17 +88,17 @@ export default function ChatScreen() {
 
             // Scenario 2: We have a Mentor UID and need to generate/get the Chat ID
             console.log('🔄 Checking Chat Init Conditions:', {
-                hasUser: !!currentUser,
+                hasActualUserId: !!actualUserId,
                 idParam: id,
                 currentName: currentUserFirstName,
                 mentorName: mentorFirstName
             });
 
-            if (currentUser && id && !id.includes('_') && currentUserFirstName !== 'User' && mentorFirstName) {
+            if (actualUserId && id && !id.includes('_') && currentUserFirstName !== 'User' && mentorFirstName) {
                 console.log('🚀 Conditions met, initializing chat...');
                 try {
                     const resolvedChatId = await createOrGetChat(
-                        currentUser.uid,
+                        actualUserId,
                         id,
                         currentUserFirstName,
                         mentorFirstName
@@ -109,7 +115,7 @@ export default function ChatScreen() {
                 // and if we are waiting on data.
                 if (id && !id.includes('_')) {
                     const missing = [];
-                    if (!currentUser) missing.push('currentUser');
+                    if (!actualUserId) missing.push('actualUserId');
                     if (currentUserFirstName === 'User') missing.push('currentUserFirstName ("User")');
                     if (!mentorFirstName) missing.push('mentorFirstName (empty)');
                     console.log('⏳ Waiting for conditions (Creation Mode)... Missing:', missing.join(', '));
@@ -117,7 +123,7 @@ export default function ChatScreen() {
             }
         };
         initChat();
-    }, [id, currentUserFirstName, mentorFirstName]);
+    }, [id, actualUserId, currentUserFirstName, mentorFirstName]);
 
     useLayoutEffect(() => {
         // Reference to the messages subcollection for this chat
@@ -192,18 +198,16 @@ export default function ChatScreen() {
         [chatId, currentUserFirstName]
     );
 
-    const currentUser = FIREBASE_AUTH.currentUser;
-
     return (
-        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+        <SafeAreaView className="flex-1 bg-white dark:bg-gray-900" edges={['top']}>
             {/* Custom Header */}
-            <View className="flex-row items-center px-4 py-3 border-b border-gray-200 bg-white">
+            <View className="flex-row items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                 <TouchableOpacity
                     onPress={() => router.back()}
                     className="mr-3 min-h-[44px] min-w-[44px] justify-center items-center">
                     <ArrowLeft size={24} color="#2563eb" />
                 </TouchableOpacity>
-                <Text className="text-xl font-bold text-gray-900">
+                <Text className="text-xl font-bold text-gray-900 dark:text-white">
                     {mentorFirstName || 'Chat'}
                 </Text>
             </View>
@@ -217,7 +221,7 @@ export default function ChatScreen() {
                     messages={messages}
                     onSend={(messages) => onSend(messages)}
                     user={{
-                        _id: currentUser?.uid || 'anonymous',
+                        _id: actualUserId || 'anonymous',
                         name: currentUserFirstName, // Use firstName only (HIPAA)
                     }}
                     renderAvatar={null} // Hide avatars (HIPAA)

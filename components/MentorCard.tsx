@@ -9,6 +9,8 @@ interface Mentor extends User {
   connectionStatus: ConnectionStatus;
   requestId?: string;
   chatId?: string;
+  matchDetails?: string[]; // What attributes matched
+  matchScore?: number; // Overall match score
 }
 
 interface MentorCardProps {
@@ -174,13 +176,34 @@ export default function MentorCard({
             </Text>
           </View>
           <View className="flex-row items-center">
-            <Heart size={16} color="#ef4444" />
-            <Text className="text-lg text-gray-700 ml-1">
-              Available for Chat
-            </Text>
+            {(mentor.availableToChat ?? true) ? (
+              <>
+                <Heart size={16} color="#ef4444" />
+                <Text className="text-lg text-gray-700 ml-1">
+                  Available for Chat
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text className="text-lg text-gray-500 ml-1">
+                  Not available to chat
+                </Text>
+              </>
+            )}
           </View>
         </View>
       </View>
+
+      {/* Location Info (if available) */}
+      {(mentor.building || mentor.floor) && (
+        <View className="mb-3 flex-row items-center">
+          <View className="px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
+            <Text className="text-sm font-medium text-blue-800">
+              📍 {mentor.building || 'Building not specified'}{mentor.floor ? `, Floor ${mentor.floor}` : ''}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Bio */}
       <Text className="text-lg text-gray-700 mb-4 leading-6 italic">
@@ -207,8 +230,26 @@ export default function MentorCard({
         ))}
       </View>
 
+      {/* Match Details - What you have in common */}
+      {
+        mentor.matchDetails && mentor.matchDetails.length > 0 && (
+          <View className="mb-3">
+            <Text className="text-sm font-semibold text-green-700 mb-2">✓ You match on:</Text>
+            <View className="flex-row flex-wrap">
+              {mentor.matchDetails.map((detail, index) => (
+                <View
+                  key={`${mentor.uid}-match-${index}`}
+                  className="px-3 py-1.5 bg-green-100 rounded-full mr-2 mb-2 border border-green-300">
+                  <Text className="text-sm font-medium text-green-800">{detail}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )
+      }
+
       {/* Action Buttons */}
       {renderButton()}
-    </View>
+    </View >
   );
 }

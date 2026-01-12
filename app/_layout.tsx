@@ -66,12 +66,15 @@ function RootLayoutNav() {
 
     const inTabsGroup = segments[0] === '(tabs)';
     const inOnboarding = segments[0] === 'onboarding';
+    const inWelcome = segments[0] === 'welcome';
+    const inSplash = segments[0] === 'splash';
+    const inLogin = segments[0] === 'login';
 
-    if (profileComplete === false && !inOnboarding) {
-      // Redirect to onboarding if profile is incomplete
-      router.replace('/onboarding');
-    } else if (profileComplete === true && inOnboarding) {
-      // Redirect to tabs if profile is complete (and user is trying to view onboarding)
+    if (profileComplete === false && !inOnboarding && !inWelcome && !inSplash && !inLogin) {
+      // Redirect to splash screen if profile is incomplete (shows welcome then login)
+      router.replace('/splash');
+    } else if (profileComplete === true && (inOnboarding || inWelcome || inSplash || inLogin)) {
+      // Redirect to tabs if profile is complete
       router.replace('/(tabs)');
     }
   }, [profileComplete, segments, isLoading]);
@@ -83,6 +86,7 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />

@@ -1,8 +1,10 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
 import { Calendar, Clock, Edit, MapPin, Plus } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { storage } from '../../utils/storage';
 
 interface AppointmentDetails {
   doctor?: string;
@@ -204,11 +206,13 @@ const getInitialAppointments = (): Appointment[] => {
 };
 
 export default function AppointmentsScreen() {
+  const router = useRouter();
   const [appointments, setAppointments] = useState<Appointment[]>(getInitialAppointments());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [logoTapCount, setLogoTapCount] = useState(0);
 
   // Form state for add/edit appointment
   const [formTitle, setFormTitle] = useState('');
@@ -222,6 +226,44 @@ export default function AppointmentsScreen() {
   const [formDateTime, setFormDateTime] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Reset tap count after 2 seconds
+  useEffect(() => {
+    if (logoTapCount > 0) {
+      const resetTimer = setTimeout(() => setLogoTapCount(0), 2000);
+      return () => clearTimeout(resetTimer);
+    }
+  }, [logoTapCount]);
+
+  const handleLogoPress = async () => {
+    const newCount = logoTapCount + 1;
+    setLogoTapCount(newCount);
+
+    if (newCount === 3) {
+      Alert.alert(
+        'Reset App Data?',
+        'This will clear all local data and sign you out. Your profile in the cloud will remain safe.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Reset',
+            style: 'destructive',
+            onPress: async () => {
+              await storage.removeItem('userUID');
+              await storage.removeItem('onboardingCompletedForUID');
+              Alert.alert('Reset Complete', 'App data cleared. Reloading...', [
+                {
+                  text: 'OK',
+                  onPress: () => router.replace('/welcome')
+                }
+              ]);
+            }
+          }
+        ]
+      );
+      setLogoTapCount(0);
+    }
+  };
 
   // Get upcoming appointment (next appointment)
   const getUpcomingAppointment = (): Appointment | null => {
@@ -401,13 +443,22 @@ export default function AppointmentsScreen() {
   const futureAppointments = getFutureAppointments();
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-      {/* Header with Add button */}
-      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900">Your Care Plan</Text>
+    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900" edges={['top']}>
+      {/* Header with Logo and Add button */}
+      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        <View className="flex-row items-center flex-1">
+          <TouchableOpacity onPress={handleLogoPress} activeOpacity={0.7}>
+            <Image
+              source={require('../../MyCancerCompanion APP LOGO.png')}
+              style={{ width: 40, height: 40, marginRight: 12 }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+          <Text className="text-2xl font-bold text-gray-900 dark:text-white">Your Care Plan</Text>
+        </View>
         <TouchableOpacity
           onPress={handleAddAppointment}
-          className="bg-blue-600 rounded-full p-3 min-h-[44px] min-w-[44px] justify-center items-center active:bg-blue-700">
+          className="bg-blue-600 dark:bg-blue-500 rounded-full p-3 min-h-[44px] min-w-[44px] justify-center items-center active:bg-blue-700 dark:active:bg-blue-600">
           <Plus size={24} color="#ffffff" />
         </TouchableOpacity>
       </View>

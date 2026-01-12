@@ -5,10 +5,11 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -64,6 +65,9 @@ export default function ProfileEditScreen() {
         supportNeeds: [] as string[],
         hobbies: '',
         bio: '',
+        availableToChat: true,
+        building: '',
+        floor: ''
     });
 
     useEffect(() => {
@@ -112,6 +116,9 @@ export default function ProfileEditScreen() {
                 supportNeeds: user.supportNeeds,
                 hobbies: user.hobbies.join(', '),
                 bio: user.bio,
+                availableToChat: user.availableToChat ?? true, // Default to true if not set
+                building: user.building || 'Sweetwater Pavilion',
+                floor: user.floor || '1'
             });
         } catch (error) {
             console.error('Error loading profile:', error);
@@ -172,6 +179,9 @@ export default function ProfileEditScreen() {
                 supportNeeds: formData.supportNeeds,
                 hobbies: hobbiesArray,
                 bio: formData.bio,
+                availableToChat: formData.availableToChat,
+                building: formData.building,
+                floor: formData.floor
             });
 
             Alert.alert('Success', 'Your profile has been updated!', [
@@ -436,6 +446,36 @@ export default function ProfileEditScreen() {
                     />
                 </View>
 
+                {/* Location */}
+                <View className="mb-6">
+                    <Text className="text-lg font-semibold text-gray-900 mb-2">
+                        Location (Optional)
+                    </Text>
+                    <Text className="text-sm text-gray-600 mb-3">
+                        Help others find you if you're nearby for in-person support
+                    </Text>
+
+                    <Text className="text-sm font-medium text-gray-700 mb-1">Building</Text>
+                    <TextInput
+                        className="border border-gray-300 rounded-lg px-4 py-3 text-base mb-3"
+                        placeholder="e.g., Sweetwater Pavilion"
+                        value={formData.building}
+                        onChangeText={(text) => setFormData({ ...formData, building: text })}
+                    />
+
+                    <Text className="text-sm font-medium text-gray-700 mb-1">Floor</Text>
+                    <TextInput
+                        className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                        placeholder="e.g., 1, 2, 3"
+                        value={formData.floor}
+                        onChangeText={(text) => setFormData({ ...formData, floor: text })}
+                    />
+
+                    <Text className="text-xs text-gray-500 mt-2 italic">
+                        Default: 16655 Southwest Fwy, Sugar Land, TX 77479
+                    </Text>
+                </View>
+
                 {/* Bio */}
                 <View className="mb-6">
                     <Text className="text-lg font-semibold text-gray-900 mb-2">Bio</Text>
@@ -455,6 +495,30 @@ export default function ProfileEditScreen() {
                     <Text className="text-gray-500 text-xs mt-1 text-right">
                         {formData.bio.length}/200
                     </Text>
+                </View>
+
+                {/* Available to Chat Toggle */}
+                <View className="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <View className="flex-row items-center justify-between">
+                        <View className="flex-1 mr-4">
+                            <Text className="text-base font-semibold text-gray-900 mb-1">
+                                Available to Chat
+                            </Text>
+                            <Text className="text-sm text-gray-600">
+                                {formData.availableToChat
+                                    ? 'You are open to receiving chat requests'
+                                    : 'You will not appear available for new chats'}
+                            </Text>
+                        </View>
+                        <Switch
+                            value={formData.availableToChat}
+                            onValueChange={(value) =>
+                                setFormData({ ...formData, availableToChat: value })
+                            }
+                            trackColor={{ false: '#d1d5db', true: '#10b981' }}
+                            thumbColor={formData.availableToChat ? '#ffffff' : '#f3f4f6'}
+                        />
+                    </View>
                 </View>
 
                 {/* Save Button (Bottom) */}

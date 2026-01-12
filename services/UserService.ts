@@ -34,16 +34,20 @@ export const getMatchingMentors = async (cancerType: string): Promise<User[]> =>
 };
 
 /**
- * Smart matching algorithm with fallback tiers
- * - Priority 1: Exact matches (cancer type + treatment type)
- * - Priority 2: Partial matches (cancer type only)
- * - Priority 3: All other users (so there's always someone to talk to)
+ * Comprehensive matching algorithm with primary and secondary factors
+ * PRIMARY (50 points each): Cancer type, Treatment type, Support needs
+ * SECONDARY (10 points each): Hobbies, Age range, Diagnosis stage similarity, Recurrence status
  */
 export const getMatchingUsers = async (
     currentUserRole: 'patient' | 'mentor',
     cancerType: string,
-    treatmentType?: string
-): Promise<User[]> => {
+    treatmentType?: string,
+    supportNeeds?: string[],
+    hobbies?: string[],
+    ageRange?: string,
+    diagnosisStage?: string,
+    recurrences?: string
+): Promise<Array<User & { matchDetails: string[]; matchScore: number }>> => {
     try {
         const usersRef = collection(FIREBASE_DB, 'users');
 
@@ -59,52 +63,117 @@ export const getMatchingUsers = async (
             allUsers.push({ ...doc.data() } as User);
         });
 
-        if (allUsers.length === 0) {
-            console.log(`No ${targetRole}s found`);
+        // Filter to only show users who are available to chat (default to true if not set)
+        const availableUsers = allUsers.filter(user => user.availableToChat !== false);
+
+        if (availableUsers.length === 0) {
+            console.log(`No available ${targetRole}s found`);
             return [];
         }
 
         // Score each user based on match quality
-        const scoredUsers = allUsers.map(user => {
+        const scoredUsers = availableUsers.map(user => {
             let score = 0;
             const matchDetails: string[] = [];
 
-            // Priority 1: Cancer type match (highest priority)
+            // === PRIMARY FACTORS (50 points each) ===
+
+            // Factor 1: Cancer type match
             if (user.cancerType === cancerType) {
-                score += 100;
-                matchDetails.push('cancer type');
+                score += 50;
+                matchDetails.push('Same cancer type');
             }
 
-            // Priority 2: Treatment type match
+            // Factor 2: Treatment type match
             if (treatmentType && user.treatmentType === treatmentType) {
                 score += 50;
-                matchDetails.push('treatment');
+                matchDetails.push('Same treatment');
             }
 
-            // Priority 3: Hobbies overlap
-            // (This would require passing user hobbies, skipping for now)
+            // Factor 3: Support needs overlap
+            if (supportNeeds && supportNeeds.length > 0 && user.supportNeeds && user.supportNeeds.length > 0) {
+                const overlap = supportNeeds.filter(need => user.supportNeeds?.includes(need));
+                if (overlap.length > 0) {
+                    const overlapScore = Math.min(50, overlap.length * 10);
+                    score += overlapScore;
+                    matchDetails.push(`${overlap.length} support match${overlap.length > 1 ? 'es' : ''}`);
+                }
+            }
 
-            return { user, score, matchDetails };
+            // === SECONDARY FACTORS (10 points each) ===
+
+            // Factor 4: Hobbies overlap
+            if (hobbies && hobbies.length > 0 && user.hobbies && user.hobbies.length > 0) {
+                const hobbyOverlap = hobbies.filter(hobby =>
+                    user.hobbies?.some(userHobby =>
+                        userHobby.toLowerCase().includes(hobby.toLowerCase()) ||
+                        hobby.toLowerCase().includes(userHobby.toLowerCase())
+                    )
+                );
+                if (hobbyOverlap.length > 0) {
+                    score += Math.min(10, hobbyOverlap.length * 3);
+                    matchDetails.push(`${hobbyOverlap.length} shared hobby${hobbyOverlap.length > 1 ? 'ies' : ''}`);
+                }
+            }
+
+            // Factor 5: Age range match
+            if (ageRange && user.ageRange === ageRange) {
+                score += 10;
+                matchDetails.push('Similar age');
+            }
+
+            // Factor 6: Diagnosis stage similarity
+            if (diagnosisStage && user.diagnosisStage) {
+                // Check if both contain "Stage" and same number, or both are survivors
+                const isSurvivor = diagnosisStage.toLowerCase().includes('survivor') || diagnosisStage.toLowerCase().includes('year');
+                const userIsSurvivor = user.diagnosisStage.toLowerCase().includes('survivor') || user.diagnosisStage.toLowerCase().includes('year');
+
+                if (isSurvivor && userIsSurvivor) {
+                    score += 10;
+                    matchDetails.push('Both survivors');
+                } else if (diagnosisStage.toLowerCase().includes('stage') && user.diagnosisStage.toLowerCase().includes('stage')) {
+                    // Extract stage numbers and compare
+                    const stageMatch = diagnosisStage.match(/\d+/);
+                    const userStageMatch = user.diagnosisStage.match(/\d+/);
+                    if (stageMatch && userStageMatch && stageMatch[0] === userStageMatch[0]) {
+                        score += 10;
+                        matchDetails.push('Same stage');
+                    }
+                }
+            }
+
+            // Factor 7: Recurrence status match
+            if (recurrences && user.recurrences === recurrences) {
+                score += 10;
+                matchDetails.push('Similar recurrence history');
+            }
+
+            return {
+                ...user,
+                matchScore: score,
+                matchDetails
+            };
         });
 
         // Sort by score (highest first)
-        scoredUsers.sort((a, b) => b.score - a.score);
-
-        // Extract just the users
-        const sortedUsers = scoredUsers.map(item => item.user);
+        scoredUsers.sort((a, b) => b.matchScore - a.matchScore);
 
         // Log matching results
-        const exactMatches = scoredUsers.filter(item => item.score >= 100).length;
-        const partialMatches = scoredUsers.filter(item => item.score > 0 && item.score < 100).length;
-        const noMatches = scoredUsers.filter(item => item.score === 0).length;
+        const perfectMatches = scoredUsers.filter(item => item.matchScore >= 120).length; // All primary + some secondary
+        const greatMatches = scoredUsers.filter(item => item.matchScore >= 80 && item.matchScore < 120).length; // 2+ primary factors
+        const goodMatches = scoredUsers.filter(item => item.matchScore >= 50 && item.matchScore < 80).length; // 1+ primary factors
+        const partialMatches = scoredUsers.filter(item => item.matchScore > 0 && item.matchScore < 50).length; // Secondary factors only
+        const noMatches = scoredUsers.filter(item => item.matchScore === 0).length;
 
         console.log(`Matching results for ${targetRole}s:`);
-        console.log(`  - Exact matches (cancer type): ${exactMatches}`);
-        console.log(`  - Partial matches: ${partialMatches}`);
-        console.log(`  - Other ${targetRole}s: ${noMatches}`);
-        console.log(`  - Total: ${sortedUsers.length}`);
+        console.log(`  - Perfect matches (120+ pts): ${perfectMatches}`);
+        console.log(`  - Great matches (80-119 pts): ${greatMatches}`);
+        console.log(`  - Good matches (50-79 pts): ${goodMatches}`);
+        console.log(`  - Partial matches (1-49 pts): ${partialMatches}`);
+        console.log(`  - Other ${targetRole}s (0 pts): ${noMatches}`);
+        console.log(`  - Total: ${scoredUsers.length}`);
 
-        return sortedUsers;
+        return scoredUsers;
     } catch (error) {
         console.error('Error fetching matching users:', error);
         return [];

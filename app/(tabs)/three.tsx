@@ -6,7 +6,7 @@ import { ConnectionStatus, MentorWithStatus } from '@/types';
 import { useRouter } from 'expo-router';
 import { User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Extended Mentor interface with request/chat IDs
@@ -55,14 +55,19 @@ export default function PeerSupportScreen() {
       setCurrentUserData(userData);
 
       // Fetch matching users based on role (mentors see patients, patients see mentors)
-      // Smart algorithm: exact matches first, then partial, then all others
+      // Comprehensive algorithm: primary factors (cancer, treatment, support) + secondary (hobbies, age, stage, recurrences)
       const fetchedMentors = await getMatchingUsers(
         userData.role,
         userData.cancerType,
-        userData.treatmentType
+        userData.treatmentType,
+        userData.supportNeeds,
+        userData.hobbies,
+        userData.ageRange,
+        userData.diagnosisStage,
+        userData.recurrences
       );
 
-      // Get connection status for each mentor
+      // Get connection status for each mentor and preserve match details
       const mentorsWithStatus: Mentor[] = await Promise.all(
         fetchedMentors.map(async (mentor) => {
           const connectionInfo = await getConnectionStatus(actualUserId, mentor.uid);
@@ -243,8 +248,15 @@ export default function PeerSupportScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       {/* Header */}
-      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900">Peer Support</Text>
+      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200 bg-white">
+        <View className="flex-row items-center flex-1">
+          <Image
+            source={require('../../MyCancerCompanion APP LOGO.png')}
+            style={{ width: 40, height: 40, marginRight: 12 }}
+            resizeMode="contain"
+          />
+          <Text className="text-2xl font-bold text-gray-900">Peer Support</Text>
+        </View>
         <TouchableOpacity
           onPress={handleProfilePress}
           className="p-2 min-h-[44px] min-w-[44px] justify-center items-center">
@@ -294,24 +306,56 @@ export default function PeerSupportScreen() {
             <>
               {/* Calculate match groups */}
               {(() => {
-                const bestMatches = mentors.filter(m =>
+                // PRIORITY: Active Chats (connected status)
+                const activeChats = mentors.filter(m => m.connectionStatus === 'connected');
+
+                // Then organize by match quality (excluding active chats)
+                const remainingMentors = mentors.filter(m => m.connectionStatus !== 'connected');
+
+                const bestMatches = remainingMentors.filter(m =>
                   m.cancerType === currentUserData?.cancerType &&
                   m.treatmentType === currentUserData?.treatmentType
                 );
-                const goodMatches = mentors.filter(m =>
+                const goodMatches = remainingMentors.filter(m =>
                   m.cancerType === currentUserData?.cancerType &&
                   m.treatmentType !== currentUserData?.treatmentType
                 );
-                const otherMatches = mentors.filter(m =>
+                const otherMatches = remainingMentors.filter(m =>
                   m.cancerType !== currentUserData?.cancerType
                 );
 
                 return (
                   <>
+                    {/* Active Chats Section - ALWAYS AT TOP */}
+                    {activeChats.length > 0 && (
+                      <>
+                        <View className="flex-row items-center mb-3">
+                          <Text className="text-lg font-bold text-indigo-700">💬 Active Chats</Text>
+                          <View className="ml-2 px-2 py-1 bg-indigo-100 rounded-full">
+                            <Text className="text-xs font-semibold text-indigo-800">{activeChats.length}</Text>
+                          </View>
+                        </View>
+                        <Text className="text-sm text-gray-600 mb-4">
+                          Your ongoing conversations
+                        </Text>
+                        {activeChats.map((mentor) => (
+                          <MentorCard
+                            key={`${mentor.uid}-${mentor.connectionStatus}-${mentor.requestId || 'none'}`}
+                            mentor={mentor}
+                            onRequestConnection={handleRequestConnection}
+                            onCancelRequest={handleCancelRequest}
+                            onAcceptRequest={handleAcceptRequest}
+                            onRejectRequest={handleRejectRequest}
+                            onChatPress={handleChatPress}
+                          />
+                        ))}
+                      </>
+                    )}
+
                     {/* Best Matches Section */}
                     {bestMatches.length > 0 && (
                       <>
-                        <View className="flex-row items-center mb-3">
+                        <View className={`flex-row items-center mb-3 ${activeChats.length > 0 ? 'mt-6' : ''}`}>
                           <Text className="text-lg font-bold text-green-700">⭐ Best Matches</Text>
                           <View className="ml-2 px-2 py-1 bg-green-100 rounded-full">
                             <Text className="text-xs font-semibold text-green-800">{bestMatches.length}</Text>

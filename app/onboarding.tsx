@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import OnboardingLayout from '../components/OnboardingLayout';
 import { useAuth } from '../context/AuthContext';
 import { FIREBASE_AUTH } from '../firebaseConfig';
 import { saveUserProfile } from '../services/UserService';
@@ -55,10 +56,12 @@ export default function OnboardingScreen() {
         recurrences: '',
         supportNeeds: [] as string[],
         hobbies: '',
-        bio: ''
+        bio: '',
+        building: 'Sweetwater Pavilion',
+        floor: '1'
     });
 
-    const totalSteps = formData.role === 'patient' ? 10 : 9;
+    const totalSteps = 11; // Added location step
 
     const handleNext = () => {
         // Validation for each step
@@ -132,7 +135,10 @@ export default function OnboardingScreen() {
                 hobbies: hobbiesArray,
                 bio: formData.bio,
                 profileComplete: true,
-                createdAt: new Date()
+                availableToChat: true, // Default to available
+                createdAt: new Date(),
+                building: formData.building,
+                floor: formData.floor
             });
 
             // Save to storage for persistence (store UID to track which user completed it)
@@ -181,81 +187,92 @@ export default function OnboardingScreen() {
     };
 
     return (
-        <View className="flex-1 bg-white">
-            {/* Progress Bar */}
-            <View className="bg-blue-500 pt-12 pb-4 px-6">
-                <View className="flex-row justify-between items-center mb-2">
-                    <Text className="text-white text-lg font-semibold">
-                        Step {step} of {totalSteps}
-                    </Text>
-                    {/* Diagnostic Button */}
-                    <TouchableOpacity
-                        onPress={async () => {
-                            Alert.alert(
-                                'Clear All Data?',
-                                'This will clear all stored data and restart the app. You will need to complete onboarding again.',
-                                [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    {
-                                        text: 'Clear & Restart',
-                                        style: 'destructive',
-                                        onPress: async () => {
-                                            await storage.removeItem('onboardingCompletedForUID');
-                                            Alert.alert('Data Cleared', 'Please reload the app.');
-                                        }
-                                    }
-                                ]
-                            );
-                        }}
-                        className="bg-red-500/20 px-3 py-1 rounded">
-                        <Text className="text-red-600 text-xs font-semibold">Reset</Text>
-                    </TouchableOpacity>
-                </View>
-                <View className="h-2 bg-blue-300 rounded-full">
-                    <View
-                        className="h-2 bg-white rounded-full"
-                        style={{ width: `${(step / totalSteps) * 100}%` }}
-                    />
-                </View>
-            </View>
-
-            <ScrollView className="flex-1 px-6 py-8">
+        <OnboardingLayout
+            currentStep={step}
+            totalSteps={totalSteps}
+            onBack={step > 1 ? handleBack : undefined}
+            onNext={handleNext}
+            nextButtonText={step === totalSteps ? 'Complete Profile' : 'Continue'}
+        >
+            <ScrollView
+                className="flex-1 px-6"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 24 }}
+            >
                 {/* Step 1: First Name */}
                 {step === 1 && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">What is your first name?</Text>
-                        <Text className="text-gray-600 mb-6">We only use first names for privacy</Text>
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                            What's your first name?
+                        </Text>
+                        <Text className="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
+                            We only use first names for privacy
+                        </Text>
                         <TextInput
-                            className="border border-gray-300 rounded-lg px-4 py-3 text-lg"
+                            className="border-2 border-gray-300 dark:border-gray-600 rounded-xl px-6 py-5 text-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                             placeholder="Enter your first name"
+                            placeholderTextColor="#9CA3AF"
                             value={formData.firstName}
                             onChangeText={(text) => setFormData({ ...formData, firstName: text })}
                             autoFocus
+                            style={{ fontSize: 20 }}
                         />
                     </View>
                 )}
 
                 {/* Step 2: Role */}
                 {step === 2 && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">What is your role?</Text>
-                        <Text className="text-gray-600 mb-6">Are you seeking support or offering it?</Text>
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            What's your role?
+                        </Text>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            Are you seeking support or offering it?
+                        </Text>
                         <TouchableOpacity
-                            className={`border-2 rounded-lg p-4 mb-3 ${formData.role === 'patient' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                            className={`border-3 rounded-2xl p-6 mb-4 ${formData.role === 'patient'
+                                ? 'border-indigo-500 bg-indigo-50'
+                                : 'border-gray-300 bg-white'
                                 }`}
                             onPress={() => setFormData({ ...formData, role: 'patient' })}
+                            style={{
+                                shadowColor: formData.role === 'patient' ? '#6366F1' : '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: formData.role === 'patient' ? 0.15 : 0.05,
+                                shadowRadius: 4,
+                                elevation: formData.role === 'patient' ? 4 : 2,
+                            }}
                         >
-                            <Text className={`text-lg font-semibold ${formData.role === 'patient' ? 'text-blue-500' : 'text-gray-700'}`}>
-                                Patient (Seeking Support)
+                            <Text className={`text-xl font-bold mb-2 ${formData.role === 'patient' ? 'text-indigo-700' : 'text-gray-700'
+                                }`}>
+                                🙋 Patient
+                            </Text>
+                            <Text className={`text-base ${formData.role === 'patient' ? 'text-indigo-600' : 'text-gray-600'
+                                }`}>
+                                Seeking support and connection
                             </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            className={`border-2 rounded-lg p-4 ${formData.role === 'mentor' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                            className={`border-3 rounded-2xl p-6 ${formData.role === 'mentor'
+                                ? 'border-indigo-500 bg-indigo-50'
+                                : 'border-gray-300 bg-white'
                                 }`}
                             onPress={() => setFormData({ ...formData, role: 'mentor' })}
+                            style={{
+                                shadowColor: formData.role === 'mentor' ? '#6366F1' : '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: formData.role === 'mentor' ? 0.15 : 0.05,
+                                shadowRadius: 4,
+                                elevation: formData.role === 'mentor' ? 4 : 2,
+                            }}
                         >
-                            <Text className={`text-lg font-semibold ${formData.role === 'mentor' ? 'text-blue-500' : 'text-gray-700'}`}>
-                                Mentor (Offering Support)
+                            <Text className={`text-xl font-bold mb-2 ${formData.role === 'mentor' ? 'text-indigo-700' : 'text-gray-700'
+                                }`}>
+                                🤝 Mentor
+                            </Text>
+                            <Text className={`text-base ${formData.role === 'mentor' ? 'text-indigo-600' : 'text-gray-600'
+                                }`}>
+                                Offering support to others
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -263,17 +280,24 @@ export default function OnboardingScreen() {
 
                 {/* Step 3: Cancer Type */}
                 {step === 3 && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">What type of cancer?</Text>
-                        <Text className="text-gray-600 mb-6">Select the type that applies to you</Text>
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            Type of cancer?
+                        </Text>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            Select the type that applies to you
+                        </Text>
                         {CANCER_TYPES.map((type) => (
                             <TouchableOpacity
                                 key={type}
-                                className={`border-2 rounded-lg p-4 mb-3 ${formData.cancerType === type ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                                className={`border-2 rounded-xl p-5 mb-3 ${formData.cancerType === type
+                                    ? 'border-indigo-500 bg-indigo-50'
+                                    : 'border-gray-300 bg-white'
                                     }`}
                                 onPress={() => setFormData({ ...formData, cancerType: type })}
                             >
-                                <Text className={`text-lg ${formData.cancerType === type ? 'text-blue-500 font-semibold' : 'text-gray-700'}`}>
+                                <Text className={`text-lg font-semibold ${formData.cancerType === type ? 'text-indigo-700' : 'text-gray-700'
+                                    }`}>
                                     {type}
                                 </Text>
                             </TouchableOpacity>
@@ -283,33 +307,46 @@ export default function OnboardingScreen() {
 
                 {/* Step 4: Diagnosis Stage */}
                 {step === 4 && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">Stage at diagnosis?</Text>
-                        <Text className="text-gray-600 mb-6">e.g., "Stage 2" or "5 years survivor"</Text>
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            Stage at diagnosis?
+                        </Text>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            e.g., "Stage 2" or "5 years survivor"
+                        </Text>
                         <TextInput
-                            className="border border-gray-300 rounded-lg px-4 py-3 text-lg"
+                            className="border-2 border-gray-300 rounded-xl px-6 py-5 text-xl bg-white"
                             placeholder="Enter diagnosis stage"
+                            placeholderTextColor="#9CA3AF"
                             value={formData.diagnosisStage}
                             onChangeText={(text) => setFormData({ ...formData, diagnosisStage: text })}
                             autoFocus
+                            style={{ fontSize: 20 }}
                         />
                     </View>
                 )}
 
                 {/* Step 5: Treatment Type */}
                 {step === 5 && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">Type of treatment?</Text>
-                        <Text className="text-gray-600 mb-6">Select all that apply</Text>
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            Type of treatment?
+                        </Text>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            Select all that apply
+                        </Text>
                         {TREATMENT_TYPES.map((treatment) => (
                             <TouchableOpacity
                                 key={treatment}
-                                className={`border-2 rounded-lg p-4 mb-3 ${formData.treatmentType.includes(treatment) ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                                className={`border-2 rounded-xl p-5 mb-3 ${formData.treatmentType.includes(treatment)
+                                    ? 'border-indigo-500 bg-indigo-50'
+                                    : 'border-gray-300 bg-white'
                                     }`}
                                 onPress={() => toggleTreatment(treatment)}
                             >
-                                <Text className={`text-lg ${formData.treatmentType.includes(treatment) ? 'text-blue-500 font-semibold' : 'text-gray-700'}`}>
-                                    {treatment}
+                                <Text className={`text-lg font-semibold ${formData.treatmentType.includes(treatment) ? 'text-indigo-700' : 'text-gray-700'
+                                    }`}>
+                                    {formData.treatmentType.includes(treatment) ? '✓ ' : ''}{treatment}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -318,37 +355,54 @@ export default function OnboardingScreen() {
 
                 {/* Step 6: Age Range */}
                 {step === 6 && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">Age range?</Text>
-                        <Text className="text-gray-600 mb-6">This helps with matching (kept private)</Text>
-                        {AGE_RANGES.map((range) => (
-                            <TouchableOpacity
-                                key={range}
-                                className={`border-2 rounded-lg p-4 mb-3 ${formData.ageRange === range ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-                                    }`}
-                                onPress={() => setFormData({ ...formData, ageRange: range })}
-                            >
-                                <Text className={`text-lg ${formData.ageRange === range ? 'text-blue-500 font-semibold' : 'text-gray-700'}`}>
-                                    {range}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            Your age range?
+                        </Text>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            This helps with matching (kept private)
+                        </Text>
+                        <View className="flex-row flex-wrap gap-3">
+                            {AGE_RANGES.map((range) => (
+                                <TouchableOpacity
+                                    key={range}
+                                    className={`border-2 rounded-xl px-6 py-4 ${formData.ageRange === range
+                                        ? 'border-indigo-500 bg-indigo-50'
+                                        : 'border-gray-300 bg-white'
+                                        }`}
+                                    onPress={() => setFormData({ ...formData, ageRange: range })}
+                                    style={{ minWidth: '45%' }}
+                                >
+                                    <Text className={`text-lg font-semibold text-center ${formData.ageRange === range ? 'text-indigo-700' : 'text-gray-700'
+                                        }`}>
+                                        {range}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
                 )}
 
                 {/* Step 7: Recurrences */}
                 {step === 7 && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">Recurrences?</Text>
-                        <Text className="text-gray-600 mb-6">Has the cancer returned?</Text>
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            Any recurrences?
+                        </Text>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            Has the cancer returned?
+                        </Text>
                         {['No', 'Yes, once', 'Yes, multiple'].map((option) => (
                             <TouchableOpacity
                                 key={option}
-                                className={`border-2 rounded-lg p-4 mb-3 ${formData.recurrences === option ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                                className={`border-2 rounded-xl p-5 mb-3 ${formData.recurrences === option
+                                    ? 'border-indigo-500 bg-indigo-50'
+                                    : 'border-gray-300 bg-white'
                                     }`}
                                 onPress={() => setFormData({ ...formData, recurrences: option })}
                             >
-                                <Text className={`text-lg ${formData.recurrences === option ? 'text-blue-500 font-semibold' : 'text-gray-700'}`}>
+                                <Text className={`text-lg font-semibold ${formData.recurrences === option ? 'text-indigo-700' : 'text-gray-700'
+                                    }`}>
                                     {option}
                                 </Text>
                             </TouchableOpacity>
@@ -356,84 +410,122 @@ export default function OnboardingScreen() {
                     </View>
                 )}
 
-                {/* Step 8: Support Needs (Patients Only) */}
-                {step === 8 && formData.role === 'patient' && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">What support do you need?</Text>
-                        <Text className="text-gray-600 mb-6">Select all that apply</Text>
+                {/* Step 8: Support Needs (Both Roles) */}
+                {step === 8 && (
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            {formData.role === 'patient'
+                                ? 'What support do you need?'
+                                : 'How can you help others?'}
+                        </Text>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            {formData.role === 'patient'
+                                ? 'Select all that apply'
+                                : 'Select the types of support you can offer'}
+                        </Text>
                         {SUPPORT_NEEDS.map((need) => (
                             <TouchableOpacity
                                 key={need}
-                                className={`border-2 rounded-lg p-4 mb-3 ${formData.supportNeeds.includes(need) ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                                className={`border-2 rounded-xl p-5 mb-3 ${formData.supportNeeds.includes(need)
+                                    ? 'border-indigo-500 bg-indigo-50'
+                                    : 'border-gray-300 bg-white'
                                     }`}
                                 onPress={() => toggleSupportNeed(need)}
                             >
-                                <Text className={`text-lg ${formData.supportNeeds.includes(need) ? 'text-blue-500 font-semibold' : 'text-gray-700'}`}>
-                                    {need}
+                                <Text className={`text-lg font-semibold ${formData.supportNeeds.includes(need) ? 'text-indigo-700' : 'text-gray-700'
+                                    }`}>
+                                    {formData.supportNeeds.includes(need) ? '✓ ' : ''}{need}
                                 </Text>
                             </TouchableOpacity>
                         ))}
                     </View>
                 )}
 
-                {/* Step 9/8: Hobbies */}
-                {step === (formData.role === 'patient' ? 9 : 8) && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">Hobbies & Interests?</Text>
-                        <Text className="text-gray-600 mb-6">Separate with commas (e.g., Reading, Yoga, Gardening)</Text>
+                {/* Step 9: Hobbies */}
+                {step === 9 && (
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            Hobbies & Interests?
+                        </Text>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            Separate with commas (e.g., Reading, Yoga, Gardening)
+                        </Text>
                         <TextInput
-                            className="border border-gray-300 rounded-lg px-4 py-3 text-lg"
+                            className="border-2 border-gray-300 rounded-xl px-6 py-5 text-xl bg-white"
                             placeholder="Enter hobbies"
+                            placeholderTextColor="#9CA3AF"
                             value={formData.hobbies}
                             onChangeText={(text) => setFormData({ ...formData, hobbies: text })}
                             multiline
                             autoFocus
+                            style={{ fontSize: 20, minHeight: 100 }}
                         />
                     </View>
                 )}
 
-                {/* Step 10/9: Bio */}
-                {step === totalSteps && (
-                    <View>
-                        <Text className="text-2xl font-bold mb-2">Short bio?</Text>
-                        <Text className="text-gray-600 mb-6">Tell others a bit about yourself (max 200 characters)</Text>
+                {/* Step 10: Bio */}
+                {step === 10 && (
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            Tell us about yourself
+                        </Text>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            Share a bit about your journey (max 200 characters)
+                        </Text>
                         <TextInput
-                            className="border border-gray-300 rounded-lg px-4 py-3 text-lg"
+                            className="border-2 border-gray-300 rounded-xl px-6 py-5 text-xl bg-white"
                             placeholder="e.g., Fighting strong since 2023!"
+                            placeholderTextColor="#9CA3AF"
                             value={formData.bio}
                             onChangeText={(text) => setFormData({ ...formData, bio: text.slice(0, 200) })}
                             multiline
                             maxLength={200}
                             autoFocus
+                            style={{ fontSize: 20, minHeight: 120 }}
                         />
-                        <Text className="text-gray-500 text-sm mt-2 text-right">
+                        <Text className="text-gray-500 text-base mt-3 text-right">
                             {formData.bio.length}/200
                         </Text>
                     </View>
                 )}
-            </ScrollView>
 
-            {/* Navigation Buttons */}
-            <View className="px-6 py-4 border-t border-gray-200">
-                <View className="flex-row gap-3">
-                    {step > 1 && (
-                        <TouchableOpacity
-                            className="flex-1 bg-gray-200 rounded-lg py-4"
-                            onPress={handleBack}
-                        >
-                            <Text className="text-center text-gray-700 font-semibold text-lg">Back</Text>
-                        </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                        className={`flex-1 bg-blue-500 rounded-lg py-4 ${step === 1 ? 'w-full' : ''}`}
-                        onPress={handleNext}
-                    >
-                        <Text className="text-center text-white font-semibold text-lg">
-                            {step === totalSteps ? 'Complete' : 'Next'}
+                {/* Step 11: Location (Optional) */}
+                {step === totalSteps && (
+                    <View className="py-4">
+                        <Text className="text-3xl font-bold text-gray-900 mb-3">
+                            Your location (Optional)
                         </Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </View>
+                        <Text className="text-lg text-gray-600 mb-8 leading-relaxed">
+                            Help others find you if you're nearby for in-person support
+                        </Text>
+
+                        <Text className="text-base font-semibold text-gray-700 mb-2">Building</Text>
+                        <TextInput
+                            className="border-2 border-gray-300 rounded-xl px-6 py-5 text-xl bg-white mb-4"
+                            placeholder="e.g., Sweetwater Pavilion"
+                            placeholderTextColor="#9CA3AF"
+                            value={formData.building}
+                            onChangeText={(text) => setFormData({ ...formData, building: text })}
+                            style={{ fontSize: 20 }}
+                        />
+
+                        <Text className="text-base font-semibold text-gray-700 mb-2">Floor</Text>
+                        <TextInput
+                            className="border-2 border-gray-300 rounded-xl px-6 py-5 text-xl bg-white"
+                            placeholder="e.g., 1, 2, 3"
+                            placeholderTextColor="#9CA3AF"
+                            value={formData.floor}
+                            onChangeText={(text) => setFormData({ ...formData, floor: text })}
+                            keyboardType="default"
+                            style={{ fontSize: 20 }}
+                        />
+
+                        <Text className="text-sm text-gray-500 mt-4 italic">
+                            Default: 16655 Southwest Fwy, Sugar Land, TX 77479
+                        </Text>
+                    </View>
+                )}
+            </ScrollView>
+        </OnboardingLayout>
     );
 }

@@ -1,15 +1,20 @@
+
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Checkbox from 'expo-checkbox';
 import { Calendar, Minus, Plus, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../../context/AuthContext';
+import { getLogForDate, logDailySymptom } from '../../services/SymptomService';
+import { SymptomEntry } from '../../types';
 
 interface Symptom {
   id: string;
   name: string;
   checked: boolean;
   severity: number;
+  notes: string;
 }
 
 // Helper function to convert Date to date string key (YYYY-MM-DD)
@@ -22,16 +27,19 @@ const getDateKey = (date: Date): string => {
 
 // Default symptoms template for new dates
 const getDefaultSymptoms = (): Symptom[] => [
-  { id: '1', name: 'Nausea', checked: false, severity: 5 },
-  { id: '2', name: 'Vomiting', checked: false, severity: 5 },
-  { id: '3', name: 'Fatigue', checked: false, severity: 5 },
-  { id: '4', name: 'Pain', checked: false, severity: 5 },
-  { id: '5', name: 'Loss of Appetite', checked: false, severity: 5 },
+  { id: '1', name: 'Nausea', checked: false, severity: 5, notes: '' },
+  { id: '2', name: 'Vomiting', checked: false, severity: 5, notes: '' },
+  { id: '3', name: 'Fatigue', checked: false, severity: 5, notes: '' },
+  { id: '4', name: 'Pain', checked: false, severity: 5, notes: '' },
+  { id: '5', name: 'Loss of Appetite', checked: false, severity: 5, notes: '' },
 ];
 
 export default function DailyLogScreen() {
+  const { actualUserId } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Dictionary to store symptoms by date (key: 'YYYY-MM-DD', value: Symptom[])
   const [symptomsByDate, setSymptomsByDate] = useState<Record<string, Symptom[]>>(() => {
@@ -47,26 +55,71 @@ export default function DailyLogScreen() {
   const [showAddSymptomModal, setShowAddSymptomModal] = useState(false);
   const [newSymptomName, setNewSymptomName] = useState('');
 
-  // Update symptoms when selected date changes
+  // Debug: Check if actualUserId is available
   useEffect(() => {
-    const dateKey = getDateKey(selectedDate);
-    const dateSymptoms = symptomsByDate[dateKey];
+    console.log('🔍 DEBUG: actualUserId =', actualUserId);
+  }, [actualUserId]);
 
-    if (dateSymptoms) {
-      // Load existing symptoms for this date
-      setSymptoms(dateSymptoms);
-    } else {
-      // Create default symptoms for new date
-      const defaultSymptoms = getDefaultSymptoms();
-      setSymptoms(defaultSymptoms);
-      // Save to dictionary
-      setSymptomsByDate((prev) => ({
-        ...prev,
-        [dateKey]: defaultSymptoms,
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate]);
+  // Load symptoms from Firebase when date changes
+  useEffect(() => {
+    const loadSymptomsForDate = async () => {
+      if (!actualUserId) return;
+
+      const dateKey = getDateKey(selectedDate);
+      setLoading(true);
+
+      try {
+        // Try to load from Firebase
+        const log = await getLogForDate(actualUserId, dateKey);
+
+        if (log && log.symptomArray) {
+          // Convert Firebase data back to UI format
+          const loadedSymptoms: Symptom[] = getDefaultSymptoms().map(defaultSymptom => {
+            const savedSymptom = log.symptomArray.find(s => s.name === defaultSymptom.name);
+            if (savedSymptom) {
+              return {
+                ...defaultSymptom,
+                checked: true,
+                severity: savedSymptom.severity,
+                notes: savedSymptom.notes || ''
+              };
+            }
+            return defaultSymptom;
+          });
+
+          // Add any custom symptoms that were saved
+          log.symptomArray.forEach(savedSymptom => {
+            const exists = loadedSymptoms.find(s => s.name === savedSymptom.name);
+            if (!exists) {
+              loadedSymptoms.push({
+                id: Date.now().toString(),
+                name: savedSymptom.name,
+                checked: true,
+                severity: savedSymptom.severity,
+                notes: savedSymptom.notes || ''
+              });
+            }
+          });
+
+          setSymptoms(loadedSymptoms);
+          setSymptomsByDate(prev => ({ ...prev, [dateKey]: loadedSymptoms }));
+        } else {
+          // No data in Firebase, use defaults
+          const defaultSymptoms = getDefaultSymptoms();
+          setSymptoms(defaultSymptoms);
+          setSymptomsByDate(prev => ({ ...prev, [dateKey]: defaultSymptoms }));
+        }
+      } catch (error) {
+        console.error('Error loading symptoms:', error);
+        const defaultSymptoms = getDefaultSymptoms();
+        setSymptoms(defaultSymptoms);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSymptomsForDate();
+  }, [selectedDate, actualUserId]);
 
   const formatDate = (date: Date) => {
     const today = new Date();
@@ -123,6 +176,20 @@ export default function DailyLogScreen() {
     return 'text-red-600';
   };
 
+  const updateNotes = (id: string, notes: string) => {
+    const updatedSymptoms = symptoms.map((symptom) =>
+      symptom.id === id ? { ...symptom, notes } : symptom
+    );
+    setSymptoms(updatedSymptoms);
+
+    // Save to dictionary
+    const dateKey = getDateKey(selectedDate);
+    setSymptomsByDate((prev) => ({
+      ...prev,
+      [dateKey]: updatedSymptoms,
+    }));
+  };
+
   const generateSummary = () => {
     // 1. Calculate stats 
     // Total days tracked (from new prompt)
@@ -146,7 +213,7 @@ export default function DailyLogScreen() {
     let summary = `Summary for ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}\n\n`;
 
     // Real Stats
-    summary += `• Data logged on ${daysWithData} days total (${daysThisMonth} this month).\n`;
+    summary += `• Data logged on ${daysWithData} days total(${daysThisMonth} this month).\n`;
 
     if (activeSymptoms.length > 0) {
       summary += `• Patient reported today: ${symptomDetails}.\n`;
@@ -155,8 +222,8 @@ export default function DailyLogScreen() {
     }
 
     // Mock AI Insights (Hardcoded placeholders)
-    summary += `\nAI Insights (Mock):\n`;
-    summary += `• Nausea severity peaked at 8/10 on Tuesday.\n`;
+    summary += `\nAI Insights(Mock): \n`;
+    summary += `• Nausea severity peaked at 8 / 10 on Tuesday.\n`;
     summary += `• Fatigue is trending upwards.`;
 
     Alert.alert("Doctor's Summary", summary);
@@ -173,6 +240,7 @@ export default function DailyLogScreen() {
         name: newSymptomName.trim(),
         checked: false,
         severity: 5,
+        notes: '',
       };
       const updatedSymptoms = [...symptoms, newSymptom];
       setSymptoms(updatedSymptoms);
@@ -222,8 +290,15 @@ export default function DailyLogScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       {/* Header */}
-      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900">Daily Symptom Log</Text>
+      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200 bg-white">
+        <View className="flex-row items-center flex-1">
+          <Image
+            source={require('../../MyCancerCompanion APP LOGO.png')}
+            style={{ width: 40, height: 40, marginRight: 12 }}
+            resizeMode="contain"
+          />
+          <Text className="text-2xl font-bold text-gray-900">Daily Health Log</Text>
+        </View>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -249,31 +324,37 @@ export default function DailyLogScreen() {
 
           {/* Date Picker Modal (iOS) */}
           {showDatePicker && Platform.OS === 'ios' && (
-            <View className="absolute inset-0 bg-black/50 z-50 justify-end">
-              <View className="bg-white rounded-t-3xl p-6">
-                <View className="flex-row justify-between items-center mb-4">
-                  <TouchableOpacity onPress={handleDatePickerClose} className="min-h-[44px] justify-center">
-                    <Text className="text-lg text-blue-600 font-medium">Cancel</Text>
-                  </TouchableOpacity>
-                  <Text className="text-xl font-bold text-gray-900">Select Date</Text>
-                  <TouchableOpacity onPress={handleDatePickerClose} className="min-h-[44px] justify-center">
-                    <Text className="text-lg text-blue-600 font-medium">Done</Text>
-                  </TouchableOpacity>
-                </View>
-                <View className="bg-gray-50 rounded-lg overflow-hidden">
-                  <DateTimePicker
-                    value={selectedDate}
-                    mode="date"
-                    display="spinner"
-                    onChange={onDateChange}
-                    maximumDate={new Date()}
-                    minimumDate={new Date(2020, 0, 1)}
-                    textColor="#000000"
-                    style={{ height: 200, backgroundColor: '#f9fafb' }}
-                  />
+            <Modal
+              visible={showDatePicker}
+              transparent={true}
+              animationType="slide"
+              onRequestClose={handleDatePickerClose}>
+              <View className="flex-1 bg-black/50 justify-end">
+                <View className="bg-white rounded-t-3xl p-6">
+                  <View className="flex-row justify-between items-center mb-4">
+                    <TouchableOpacity onPress={handleDatePickerClose} className="min-h-[44px] justify-center">
+                      <Text className="text-lg text-blue-600 font-medium">Cancel</Text>
+                    </TouchableOpacity>
+                    <Text className="text-xl font-bold text-gray-900">Select Date</Text>
+                    <TouchableOpacity onPress={handleDatePickerClose} className="min-h-[44px] justify-center">
+                      <Text className="text-lg text-blue-600 font-medium">Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View className="bg-gray-50 rounded-lg overflow-hidden">
+                    <DateTimePicker
+                      value={selectedDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={onDateChange}
+                      maximumDate={new Date()}
+                      minimumDate={new Date(2020, 0, 1)}
+                      textColor="#000000"
+                      style={{ height: 200, backgroundColor: '#f9fafb' }}
+                    />
+                  </View>
                 </View>
               </View>
-            </View>
+            </Modal>
           )}
 
           {/* Android Date Picker */}
@@ -295,7 +376,7 @@ export default function DailyLogScreen() {
 
           <View className="bg-white rounded-xl border border-gray-200 mb-6">
             {symptoms.map((symptom, index) => (
-              <View key={symptom.id} className={`${index !== symptoms.length - 1 ? 'border-b border-gray-200' : ''}`}>
+              <View key={symptom.id} className={`${index !== symptoms.length - 1 ? 'border-b border-gray-200' : ''} `}>
                 <TouchableOpacity
                   onPress={() => toggleSymptom(symptom.id)}
                   className="flex-row items-center p-5 active:bg-gray-50">
@@ -306,34 +387,52 @@ export default function DailyLogScreen() {
                     className="mr-4"
                     style={{ width: 28, height: 28 }}
                   />
-                  <Text className={`text-xl ${symptom.checked ? 'text-gray-900 font-semibold' : 'text-gray-700'}`}>
+                  <Text className={`text - xl ${symptom.checked ? 'text-gray-900 font-semibold' : 'text-gray-700'} `}>
                     {symptom.name}
                   </Text>
                 </TouchableOpacity>
 
                 {symptom.checked && (
-                  <View className="flex-row items-center justify-between px-5 pb-5 pl-16">
-                    <Text className="text-base font-medium text-gray-600">Severity (1-10):</Text>
-                    <View className="flex-row items-center bg-gray-100 rounded-lg p-1">
-                      <TouchableOpacity
-                        onPress={() => updateSeverity(symptom.id, -1)}
-                        className="bg-white p-2 rounded-md shadow-sm active:bg-gray-50"
-                      >
-                        <Minus size={20} color="#374151" />
-                      </TouchableOpacity>
+                  <View className="px-5 pb-5 pl-16">
+                    {/* Severity Control */}
+                    <View className="flex-row items-center justify-between mb-3">
+                      <Text className="text-base font-medium text-gray-600">Severity (1-10):</Text>
+                      <View className="flex-row items-center bg-gray-100 rounded-lg p-1">
+                        <TouchableOpacity
+                          onPress={() => updateSeverity(symptom.id, -1)}
+                          className="bg-white p-2 rounded-md shadow-sm active:bg-gray-50"
+                        >
+                          <Minus size={20} color="#374151" />
+                        </TouchableOpacity>
 
-                      <View className="w-12 items-center">
-                        <Text className={`text-xl font-bold ${getSeverityColorClass(symptom.severity)}`}>
-                          {symptom.severity}
-                        </Text>
+                        <View className="w-12 items-center">
+                          <Text className={`text-xl font-bold ${getSeverityColorClass(symptom.severity)}`}>
+                            {symptom.severity}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          onPress={() => updateSeverity(symptom.id, 1)}
+                          className="bg-white p-2 rounded-md shadow-sm active:bg-gray-50"
+                        >
+                          <Plus size={20} color="#374151" />
+                        </TouchableOpacity>
                       </View>
+                    </View>
 
-                      <TouchableOpacity
-                        onPress={() => updateSeverity(symptom.id, 1)}
-                        className="bg-white p-2 rounded-md shadow-sm active:bg-gray-50"
-                      >
-                        <Plus size={20} color="#374151" />
-                      </TouchableOpacity>
+                    {/* Notes Section */}
+                    <View>
+                      <Text className="text-sm font-medium text-gray-600 mb-2">Notes (optional):</Text>
+                      <TextInput
+                        className="border border-gray-300 rounded-lg p-3 text-base bg-gray-50 min-h-[44px]"
+                        placeholder="Add notes about symptom here"
+                        placeholderTextColor="#9ca3af"
+                        value={symptom.notes}
+                        onChangeText={(text) => updateNotes(symptom.id, text)}
+                        multiline
+                        numberOfLines={2}
+                        textAlignVertical="top"
+                      />
                     </View>
                   </View>
                 )}
@@ -355,26 +454,77 @@ export default function DailyLogScreen() {
 
           {/* Confirm Log Button */}
           <TouchableOpacity
-            onPress={() => {
+            onPress={async () => {
               const checkedSymptoms = symptoms.filter(s => s.checked);
               if (checkedSymptoms.length === 0) {
-                Alert.alert(
-                  'No Symptoms Selected',
-                  'Please select at least one symptom before confirming.',
-                  [{ text: 'OK' }]
-                );
-              } else {
-                Alert.alert(
-                  'Symptoms Logged! ✅',
-                  `Successfully logged ${checkedSymptoms.length} symptom${checkedSymptoms.length > 1 ? 's' : ''} for ${formatDate(selectedDate)}.`,
-                  [{ text: 'OK' }]
-                );
+                if (Platform.OS === 'web') {
+                  alert('No Symptoms Selected\n\nPlease select at least one symptom before confirming.');
+                } else {
+                  Alert.alert(
+                    'No Symptoms Selected',
+                    'Please select at least one symptom before confirming.',
+                    [{ text: 'OK' }]
+                  );
+                }
+                return;
+              }
+
+              if (!actualUserId) {
+                Alert.alert('Error', 'You must be logged in to save symptoms.');
+                return;
+              }
+
+              try {
+                setSaving(true);
+
+                console.log('💾 Attempting to save symptoms...');
+                console.log('  User ID:', actualUserId);
+                console.log('  Date:', getDateKey(selectedDate));
+                console.log('  Symptoms:', checkedSymptoms.length);
+
+                // Convert UI symptoms to Firebase format
+                const symptomArray: SymptomEntry[] = checkedSymptoms.map(s => ({
+                  name: s.name,
+                  severity: s.severity,
+                  notes: s.notes || ''
+                }));
+
+                const dateKey = getDateKey(selectedDate);
+                await logDailySymptom(actualUserId, dateKey, symptomArray);
+
+                console.log('✅ Symptoms saved successfully!');
+
+                const message = `Successfully logged ${checkedSymptoms.length} symptom${checkedSymptoms.length > 1 ? 's' : ''} for ${formatDate(selectedDate)}.`;
+                if (Platform.OS === 'web') {
+                  alert(`Symptoms Logged! ✅\n\n${message}`);
+                } else {
+                  Alert.alert(
+                    'Symptoms Logged! ✅',
+                    message,
+                    [{ text: 'OK' }]
+                  );
+                }
+              } catch (error: any) {
+                console.error('❌ ERROR saving symptoms:', error);
+                console.error('  Error message:', error.message);
+                console.error('  Error code:', error.code);
+                console.error('  Full error:', JSON.stringify(error, null, 2));
+
+                const errorMessage = error.message || 'Failed to save symptoms. Please try again.';
+                Alert.alert('Error', errorMessage);
+              } finally {
+                setSaving(false);
               }
             }}
+            disabled={saving}
             className="bg-green-600 rounded-xl p-5 mt-4 flex-row items-center justify-center active:bg-green-700 shadow-md min-h-[44px]">
-            <Text className="text-xl font-bold text-white">
-              ✓ Confirm Log
-            </Text>
+            {saving ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text className="text-xl font-bold text-white">
+                ✓ Confirm Log
+              </Text>
+            )}
           </TouchableOpacity>
 
           {/* AI Summary Button */}
