@@ -287,16 +287,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 console.log('✅ [AuthContext] User authenticated:', user.uid, 'Profile complete:', hasProfile);
             } else {
-                // User is signed out from Firebase - always clear auth state
+                // User is signed out from Firebase
                 console.log('👤 [AuthContext] User signed out from Firebase');
                 setIsAuthenticated(false);
                 setActualUserId(null);
                 setUserEmail(null);
                 setProfileComplete(null);
-
-                // Clean up any orphaned AsyncStorage data
-                await storage.removeItem('userUID');
-                await storage.removeItem('onboardingCompletedForUID');
+                // Note: We don't clear AsyncStorage here because Firebase might just be loading
+                // AsyncStorage is only cleared on explicit signOut()
             }
 
             setIsLoading(false);

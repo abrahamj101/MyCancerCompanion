@@ -1,8 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import {
-  browserLocalPersistence,
-  initializeAuth
-} from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
@@ -21,9 +18,8 @@ const app = initializeApp(firebaseConfig);
 // Initialize Cloud Firestore and get a reference to the service
 export const FIREBASE_DB = getFirestore(app);
 
-// Initialize Firebase Authentication with persistence
-export const FIREBASE_AUTH = initializeAuth(app, {
-  persistence: browserLocalPersistence
-});
+// Initialize Firebase Authentication
+// Note: We handle persistence manually in AuthContext using AsyncStorage
+export const FIREBASE_AUTH = getAuth(app);
 
 export default app;
