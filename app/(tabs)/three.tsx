@@ -201,38 +201,15 @@ export default function PeerSupportScreen() {
 
   const handleChatPress = async (mentorId: string, existingChatId?: string) => {
     try {
-      let chatId = existingChatId;
-
-      if (!chatId) {
-        // Auto-connect / Bypass friend request
-        const mentor = mentors.find((m) => m.uid === mentorId);
-        if (!mentor || !currentUserData || !actualUserId) return;
-
-        const { createOrGetChat } = await import('@/services/ChatService');
-
-        console.log(`Creating instant chat with ${mentor.firstName}...`);
-        chatId = await createOrGetChat(
-          actualUserId,  // Use the REAL user ID
-          mentor.uid,
-          currentUserData.firstName,
-          mentor.firstName
-        );
-
-        // Update local state
-        setMentors((prev) =>
-          prev.map((m) =>
-            m.uid === mentorId
-              ? { ...m, connectionStatus: 'connected', chatId }
-              : m
-          )
-        );
-
-        console.log(`Chat created/retrieved: ${chatId}`);
+      if (!existingChatId) {
+        // No chat exists - they should send a friend request first
+        Alert.alert('Not Connected', 'Please send a connection request first.');
+        return;
       }
 
       router.push({
         pathname: '/chat/[id]',
-        params: { id: chatId },
+        params: { id: existingChatId },
       } as any);
 
     } catch (error) {

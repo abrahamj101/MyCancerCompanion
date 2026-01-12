@@ -80,14 +80,14 @@ export default function MentorCard({
     console.log(`[SWITCH] ${mentor.firstName}: status="${mentor.connectionStatus}", type=${typeof mentor.connectionStatus}`);
 
     if (mentor.connectionStatus === 'none') {
-      console.log(`[SWITCH] Rendering: Connect & Chat button`);
+      console.log(`[SWITCH] Rendering: Send Request button`);
       return (
         <TouchableOpacity
-          onPress={() => onChatPress(mentor.uid)}
+          onPress={() => onRequestConnection(mentor.uid)}
           style={[styles.buttonBase, { backgroundColor: '#2563eb' }]}>
           <View style={styles.buttonRow}>
-            <MessageCircle size={20} color="#ffffff" />
-            <Text style={styles.buttonText}>Connect & Chat</Text>
+            <UserCheck size={20} color="#ffffff" />
+            <Text style={styles.buttonText}>Send Request</Text>
           </View>
         </TouchableOpacity>
       );
