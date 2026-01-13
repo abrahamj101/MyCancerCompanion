@@ -97,8 +97,8 @@ function RootLayoutNav() {
         router.replace('/welcome');
       }
     } else if (profileComplete === true && !inTabsGroup && !inWelcome && !inLogin && !inOnboarding) {
-      // User is authenticated and profile is complete, go to tabs (but only if not on auth screens)
-      router.replace('/(tabs)');
+      // User is authenticated and profile is complete, go to Community tab
+      router.replace('/(tabs)/three');
     }
   }, [profileComplete, isAuthenticated, segments, isLoading, initialCheckDone]);
 

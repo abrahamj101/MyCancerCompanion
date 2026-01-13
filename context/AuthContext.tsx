@@ -25,6 +25,7 @@ interface AuthContextType {
     setProfileComplete: (value: boolean) => void;
     isLoading: boolean;
     actualUserId: string | null;
+    userRole: 'patient' | 'mentor' | null;
     userEmail: string | null;
     signInWithEmail: (email: string, password: string) => Promise<void>;
     signUpWithEmail: (email: string, password: string) => Promise<void>;
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [actualUserId, setActualUserId] = useState<string | null>(null);
+    const [userRole, setUserRole] = useState<'patient' | 'mentor' | null>(null);
     const [userEmail, setUserEmail] = useState<string | null>(null);
     const router = useRouter();
 
@@ -115,6 +117,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (userProfile && userProfile.profileComplete === true) {
                 console.log('✅ [AuthContext] Profile complete - user has onboarded');
+                // Store user role
+                setUserRole(userProfile.role);
                 return true;
             } else {
                 console.log('⚠️ [AuthContext] Profile incomplete or missing');
@@ -195,8 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (hasProfile) {
             // Also update the onboarding completed flag
             await storage.setItem('onboardingCompletedForUID', userCredential.user.uid);
-            console.log('✅ [AuthContext] Sign in complete, redirecting to tabs...');
-            router.replace('/(tabs)');
+            console.log('✅ [AuthContext] Sign in complete, redirecting to Community tab...');
+            router.replace('/(tabs)/three');
         } else {
             // Create skeleton if missing
             await createSkeletonProfile(userCredential.user);
@@ -236,6 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await storage.removeItem('onboardingCompletedForUID');
 
             setActualUserId(null);
+            setUserRole(null);
             setUserEmail(null);
             setProfileComplete(null);
             setIsAuthenticated(false);
@@ -255,7 +260,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (storedUID) {
             setActualUserId(storedUID);
             setProfileComplete(true);
-            console.log('✅ [AuthContext] Auth refreshed - UID:', storedUID);
+
+            // Fetch user profile to get role
+            try {
+                const userProfile = await getUserByUid(storedUID);
+                if (userProfile) {
+                    setUserRole(userProfile.role);
+                    console.log('✅ [AuthContext] Auth refreshed - UID:', storedUID, 'Role:', userProfile.role);
+                } else {
+                    console.log('✅ [AuthContext] Auth refreshed - UID:', storedUID);
+                }
+            } catch (error) {
+                console.error('❌ [AuthContext] Error fetching user profile:', error);
+                console.log('✅ [AuthContext] Auth refreshed - UID:', storedUID);
+            }
         }
     };
 
@@ -291,6 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('👤 [AuthContext] User signed out from Firebase');
                 setIsAuthenticated(false);
                 setActualUserId(null);
+                setUserRole(null);
                 setUserEmail(null);
                 setProfileComplete(null);
                 // Note: We don't clear AsyncStorage here because Firebase might just be loading
@@ -310,6 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setProfileComplete,
             isLoading,
             actualUserId,
+            userRole,
             userEmail,
             signInWithEmail,
             signUpWithEmail,

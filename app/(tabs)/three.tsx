@@ -1,4 +1,5 @@
 import MentorCard from '@/components/MentorCard';
+import TutorialModal from '@/components/TutorialModal';
 import { useAuth } from '@/context/AuthContext';
 import { getConnectionStatus, sendFriendRequest } from '@/services/FriendRequestService';
 import { User as UserType, getMatchingUsers, getUserByUid } from '@/services/UserService';
@@ -8,6 +9,7 @@ import { User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { storage } from '../../utils/storage';
 
 // Extended Mentor interface with request/chat IDs
 interface Mentor extends MentorWithStatus {
@@ -22,11 +24,35 @@ export default function PeerSupportScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUserData, setCurrentUserData] = useState<UserType | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // Fetch mentors from Firebase on mount
   useEffect(() => {
     loadCurrentUserAndMentors();
   }, []);
+
+  // Check if user has seen tutorial (user-specific)
+  useEffect(() => {
+    const checkTutorial = async () => {
+      if (!actualUserId) return; // Wait for user ID
+
+      const tutorialKey = `hasSeenCommunityTutorial_${actualUserId}`;
+      const seen = await storage.getItem(tutorialKey);
+      console.log('[Tutorial] Key:', tutorialKey, 'Value:', seen);
+      if (!seen) {
+        console.log('[Tutorial] Showing tutorial modal');
+        setShowTutorial(true);
+      } else {
+        console.log('[Tutorial] Tutorial already seen, not showing');
+      }
+    };
+    checkTutorial();
+  }, [actualUserId]);
+
+  // Debug: Log when showTutorial changes
+  useEffect(() => {
+    console.log('[Tutorial] showTutorial state changed to:', showTutorial);
+  }, [showTutorial]);
 
   const loadCurrentUserAndMentors = async () => {
     try {
@@ -257,15 +283,26 @@ export default function PeerSupportScreen() {
         }
       >
         <View className="px-4 pt-4 pb-6">
-          {/* Disclaimer */}
-          <View className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
-            <Text className="text-sm font-semibold text-blue-800 mb-1">
-              💙 Peer Support, Not Medical Advice
-            </Text>
-            <Text className="text-sm text-gray-700">
-              Connect 1-on-1 with survivors who share your journey. This is for emotional support and shared experiences.
-            </Text>
-          </View>
+          {/* Disclaimer - Different for patients vs mentors */}
+          {currentUserData?.role === 'mentor' ? (
+            <View className="bg-green-50 rounded-xl p-4 mb-4 border border-green-200">
+              <Text className="text-sm font-semibold text-green-800 mb-1">
+                💚 Thank You for Volunteering!
+              </Text>
+              <Text className="text-sm text-gray-700">
+                Your kindness and support helps these patients through difficult times. Your presence gives them strength to keep moving forward 😊
+              </Text>
+            </View>
+          ) : (
+            <View className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
+              <Text className="text-sm font-semibold text-blue-800 mb-1">
+                💙 Peer Support, Not Medical Advice
+              </Text>
+              <Text className="text-sm text-gray-700">
+                Connect 1-on-1 with survivors who share your journey. This is for emotional support and shared experiences.
+              </Text>
+            </View>
+          )}
 
           {/* Loading State */}
           {loading ? (
@@ -415,17 +452,42 @@ export default function PeerSupportScreen() {
 
               {/* Footer */}
               <View className="mt-4 p-5 bg-gray-50 rounded-xl border border-gray-200">
-                <Text className="text-lg text-gray-700 text-center">
-                  Looking for a specific type of mentor?{'\n'}
-                  <Text className="font-semibold text-blue-600">
-                    Contact us to find your perfect match
+                <Text className="text-lg text-gray-700 text-center mb-3">
+                  Looking for a specific type of mentor?
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    const url = 'https://www.mdanderson.org/about-md-anderson/contact-us.html';
+                    import('react-native').then(({ Linking }) => {
+                      Linking.openURL(url).catch((err) => console.error('Error opening link:', err));
+                    });
+                  }}
+                  className="mb-3">
+                  <Text className="text-base font-semibold text-blue-600 text-center underline">
+                    Contact MD Anderson
                   </Text>
+                </TouchableOpacity>
+                <Text className="text-sm text-gray-600 text-center">
+                  Our askMDAnderson team will help answer all your questions.{'\n'}
+                  <Text className="font-semibold">Call 1-877-632-6789</Text>
                 </Text>
               </View>
             </>
           )}
         </View>
       </ScrollView>
+
+      {/* Tutorial Modal */}
+      <TutorialModal
+        visible={showTutorial}
+        role={currentUserData?.role || 'patient'}
+        onClose={async () => {
+          if (actualUserId) {
+            await storage.setItem(`hasSeenCommunityTutorial_${actualUserId}`, 'true');
+          }
+          setShowTutorial(false);
+        }}
+      />
     </SafeAreaView>
   );
 }

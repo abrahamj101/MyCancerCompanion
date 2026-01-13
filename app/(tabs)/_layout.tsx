@@ -1,4 +1,5 @@
 import { useColorScheme } from '@/components/useColorScheme';
+import { useAuth } from '@/context/AuthContext';
 import { Tabs } from 'expo-router';
 import { Calendar, ClipboardPen, Users } from 'lucide-react-native';
 import React from 'react';
@@ -6,9 +7,14 @@ import React from 'react';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { userRole } = useAuth();
+  const isMentor = userRole === 'mentor';
+
+  console.log('[TabLayout] userRole:', userRole, 'isMentor:', isMentor);
 
   return (
     <Tabs
+      initialRouteName="three"
       screenOptions={{
         tabBarActiveTintColor: isDark ? '#3b82f6' : '#2563eb',
         tabBarInactiveTintColor: isDark ? '#6b7280' : '#9ca3af',
@@ -35,15 +41,8 @@ export default function TabLayout() {
         options={{
           title: 'Appointments',
           headerShown: false,
+          href: isMentor ? null : '/(tabs)',
           tabBarIcon: ({ color }) => <Calendar size={40} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Log',
-          headerShown: false,
-          tabBarIcon: ({ color }) => <ClipboardPen size={40} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -52,6 +51,15 @@ export default function TabLayout() {
           title: 'Community',
           headerShown: false,
           tabBarIcon: ({ color }) => <Users size={40} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="two"
+        options={{
+          title: 'Log',
+          headerShown: false,
+          href: isMentor ? null : '/(tabs)/two',
+          tabBarIcon: ({ color }) => <ClipboardPen size={40} color={color} />,
         }}
       />
     </Tabs>

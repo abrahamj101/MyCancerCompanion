@@ -151,7 +151,7 @@ export default function OnboardingScreen() {
             // Refresh auth context to update actualUserId
             await refreshAuth();
 
-            router.replace('/(tabs)');
+            router.replace('/(tabs)/three');
         } catch (error) {
             console.error('Error saving profile:', error);
             Alert.alert('Error', 'Failed to save profile. Please try again.');
