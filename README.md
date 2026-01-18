@@ -21,7 +21,7 @@ Created in collaboration with Jensen Joy.
 > **[🚀 View the Live Build on Expo (Web)](https://expo.dev/accounts/abrahamj101/projects/MyCancerCompanion/branches/main)**
 > 
 To run on your device, copy this link into the Expo Go app:  
-> 'exp://exp.host/@abrahamj101/MyCancerCompanion'
+> exp://exp.host/@abrahamj101/MyCancerCompanion
 
 ---
 
@@ -89,6 +89,7 @@ To run this project locally, follow these steps:
 4.  **Run on device**
     * Press `a` for Android Emulator.
     * Press `i` for iOS Simulator.
+    * Press `w` for Web.
     * Or scan the QR code with your physical device using the Expo Go app.
 
 ---
