@@ -18,6 +18,9 @@ Created in collaboration with Jensen Joy.
 
 *> Click the image above to watch the full demo on YouTube.*
 
+> **[🚀 View the Live Build on Expo (Web)](https://expo.dev/accounts/abrahamj101/projects/MyCancerCompanion/branches/main)**
+> **[🚀 View the Live Build on Expo (Mobile)](exp://exp.host/@abrahamj101/MyCancerCompanion)**
+
 ---
 
 ## 🚀 Key Features
@@ -56,7 +59,6 @@ This project uses **EAS (Expo Application Services)** for continuous integration
 ---
 
 ## 🏁 Getting Started
-
 To run this project locally, follow these steps:
 
 ### Prerequisites
