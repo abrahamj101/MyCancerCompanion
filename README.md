@@ -7,6 +7,7 @@
 **MyCancerCompanion** is a cross-platform mobile application designed to empower patients by streamlining the tracking of medical data, symptoms, and appointment logistics.
 
 Built with **React Native** and **Expo**, the app utilizes a unified codebase to deploy to both iOS and Android. It leverages **Firebase** for real-time data synchronization and secure authentication, ensuring critical health information is accessible and protected.
+
 Created in collaboration with Jensen Joy.
 
 ---
