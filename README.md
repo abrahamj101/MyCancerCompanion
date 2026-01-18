@@ -20,7 +20,8 @@ Created in collaboration with Jensen Joy.
 
 > **[🚀 View the Live Build on Expo (Web)](https://expo.dev/accounts/abrahamj101/projects/MyCancerCompanion/branches/main)**
 > 
-> **[🚀 View the Live Build on Expo (Mobile)](exp://exp.host/@abrahamj101/MyCancerCompanion)**
+> **To run on your device, copy this link into the Expo Go app: **
+> 'exp://exp.host/@abrahamj101/MyCancerCompanion'
 
 ---
 
