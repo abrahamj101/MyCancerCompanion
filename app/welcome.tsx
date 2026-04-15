@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, Text, View } from 'react-native';
+import AnimatedButton from '../components/AnimatedButton';
 
 export default function WelcomeScreen() {
     const router = useRouter();
@@ -82,21 +83,11 @@ export default function WelcomeScreen() {
 
                 {/* Get Started Button */}
                 <View className="w-full px-4 mb-8">
-                    <TouchableOpacity
+                    <AnimatedButton
+                        title="Get Started →"
                         onPress={() => router.push('/login')}
-                        className="bg-indigo-600 dark:bg-indigo-500 rounded-2xl py-5 shadow-xl active:bg-indigo-700 dark:active:bg-indigo-600"
-                        style={{
-                            shadowColor: '#6366F1',
-                            shadowOffset: { width: 0, height: 6 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 10,
-                            elevation: 10,
-                        }}
-                    >
-                        <Text className="text-center text-white font-bold text-2xl">
-                            Get Started →
-                        </Text>
-                    </TouchableOpacity>
+                        textStyle={{ fontSize: 24 }}
+                    />
 
                     <Text className="text-center text-gray-500 dark:text-gray-400 text-sm mt-4">
                         Takes about 2 minutes to complete

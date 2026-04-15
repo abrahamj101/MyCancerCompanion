@@ -228,7 +228,7 @@ export const getAllUsers = async (): Promise<User[]> => {
 export const saveUserProfile = async (userData: User): Promise<void> => {
     try {
         const userRef = doc(FIREBASE_DB, 'users', userData.uid);
-        await setDoc(userRef, userData);
+        await setDoc(userRef, userData, { merge: true });
         console.log('✅ User profile saved successfully');
     } catch (error) {
         console.error('❌ Error saving user profile:', error);

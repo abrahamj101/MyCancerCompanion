@@ -53,7 +53,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const { profileComplete, isLoading, isAuthenticated } = useAuth();
+  const { profileComplete, isLoading, isAuthenticated, accountStatus } = useAuth();
   const colorScheme = useColorScheme();
   const segments = useSegments();
   const router = useRouter();
@@ -84,23 +84,36 @@ function RootLayoutNav() {
     const inLogin = segments[0] === 'login';
     const inProfileEdit = segments[0] === 'profile-edit';
     const inChat = segments[0] === 'chat';
+    const inTerms = segments[0] === 'terms-and-conditions';
+    const inPendingApproval = segments[0] === 'pending-approval';
+    const inAdmin = segments[0] === 'admin';
 
     // Don't redirect if user is on splash screen (let it auto-navigate)
     if (inSplash) return;
 
-    // Don't redirect if user is on authenticated screens (profile-edit, chat, etc.)
-    if (inProfileEdit || inChat) return;
-
-    // If not authenticated or profile incomplete, redirect to welcome/login
-    if (!isAuthenticated || profileComplete === false) {
-      if (!inWelcome && !inLogin && !inOnboarding) {
+    if (!isAuthenticated) {
+      if (!inWelcome && !inLogin) {
         router.replace('/welcome');
       }
-    } else if (profileComplete === true && !inTabsGroup && !inWelcome && !inLogin && !inOnboarding) {
-      // User is authenticated and profile is complete, go to Community tab
-      router.replace('/(tabs)/three');
+    } else if (profileComplete === false) {
+      // User is authenticated but profile is incomplete
+      if (!inTerms && !inOnboarding) {
+        router.replace('/terms-and-conditions');
+      }
+    } else if (profileComplete === true) {
+      // User is authenticated and profile is complete
+      if (accountStatus === 'pending') {
+        if (!inPendingApproval) {
+          router.replace('/pending-approval');
+        }
+      } else {
+        // Only redirect to tabs if not already in a valid authenticated screen
+        if (!inTabsGroup && !inProfileEdit && !inChat && !inPendingApproval && !inAdmin) {
+          router.replace('/(tabs)/three');
+        }
+      }
     }
-  }, [profileComplete, isAuthenticated, segments, isLoading, initialCheckDone]);
+  }, [profileComplete, isAuthenticated, accountStatus, segments, isLoading, initialCheckDone]);
 
   if (isLoading || !initialCheckDone) {
     return null;
@@ -108,14 +121,17 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="splash" options={{ headerShown: false }} />
+      <Stack screenOptions={{ animation: 'slide_from_right' }}>
+        <Stack.Screen name="splash" options={{ headerShown: false, animation: 'fade' }} />
         <Stack.Screen name="welcome" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="profile-edit" options={{ headerShown: false }} />
+        <Stack.Screen name="terms-and-conditions" options={{ headerShown: false }} />
+        <Stack.Screen name="pending-approval" options={{ headerShown: false }} />
+        <Stack.Screen name="admin" options={{ headerShown: true, title: 'Admin Dashboard' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>

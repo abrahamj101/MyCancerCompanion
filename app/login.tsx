@@ -13,6 +13,7 @@ import {
     View
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import AnimatedButton from '../components/AnimatedButton';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -170,26 +171,14 @@ export default function LoginScreen() {
                     )}
 
                     {/* Email Auth Button */}
-                    <TouchableOpacity
+                    <AnimatedButton
                         onPress={handleEmailAuth}
                         disabled={isButtonDisabled}
-                        className={`rounded-xl py-4 mb-4 ${isButtonDisabled ? 'bg-indigo-400' : 'bg-indigo-600'}`}
-                        style={{
-                            shadowColor: '#6366F1',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.25,
-                            shadowRadius: 8,
-                            elevation: 6,
-                        }}
+                        title={isSignUp ? 'Create Account' : 'Sign In'}
+                        style={{ marginBottom: 16 }}
                     >
-                        {isLoading ? (
-                            <ActivityIndicator color="white" />
-                        ) : (
-                            <Text className="text-center text-white font-bold text-lg">
-                                {isSignUp ? 'Create Account' : 'Sign In'}
-                            </Text>
-                        )}
-                    </TouchableOpacity>
+                        {isLoading && <ActivityIndicator color="white" />}
+                    </AnimatedButton>
 
                     {/* Toggle Sign In/Up */}
                     <TouchableOpacity
@@ -209,11 +198,16 @@ export default function LoginScreen() {
                         <View className="flex-1 h-px bg-gray-300 dark:bg-gray-600" />
                     </View>
 
+                    {/* ── Social Auth Section ─────────────────────────────────────────
+                        Add/remove provider buttons here. Each button follows the same
+                        pattern so new providers (e.g. Apple) are a one-block addition.
+                    ─────────────────────────────────────────────────────────────────── */}
+
                     {/* Google Sign-In Button */}
                     <TouchableOpacity
                         onPress={handleGoogleSignIn}
                         disabled={isButtonDisabled}
-                        className={`flex-row items-center justify-center rounded-xl py-4 border-2 ${isButtonDisabled ? 'border-gray-200 bg-gray-100' : 'border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600'}`}
+                        className={`flex-row items-center justify-center rounded-xl py-4 mb-3 border-2 ${isButtonDisabled ? 'border-gray-200 bg-gray-100' : 'border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600'}`}
                         style={{
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: 2 },
@@ -221,12 +215,33 @@ export default function LoginScreen() {
                             shadowRadius: 4,
                             elevation: 3,
                         }}
+                        accessibilityLabel="Sign in with Google"
+                        accessibilityRole="button"
                     >
-                        <Text className="text-2xl mr-3">🔵</Text>
+                        {/* Google "G" logo approximated with styled text */}
+                        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#dadce0', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                            <Text style={{ color: '#4285F4', fontWeight: 'bold', fontSize: 14, lineHeight: 18 }}>G</Text>
+                        </View>
                         <Text className={`font-semibold text-lg ${isButtonDisabled ? 'text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
-                            Sign in with Google
+                            Continue with Google
                         </Text>
                     </TouchableOpacity>
+
+                    {/* Apple Sign-In Button — SLOT READY FOR iOS/App Store
+                        To activate:
+                        1. Install: expo install expo-apple-authentication
+                        2. Add "expo-apple-authentication" to app.json plugins
+                        3. Enable "Sign In with Apple" in your Apple Developer account
+                        4. Uncomment the block below and implement handleAppleSignIn in AuthContext
+
+                    <AppleAuthentication.AppleAuthenticationButton
+                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                        cornerRadius={12}
+                        style={{ width: '100%', height: 56, marginBottom: 12 }}
+                        onPress={handleAppleSignIn}
+                    />
+                    */}
 
                     {/* Back to Welcome */}
                     <TouchableOpacity

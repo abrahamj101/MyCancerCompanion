@@ -126,6 +126,7 @@ export default function OnboardingScreen() {
                 firstName: formData.firstName,
                 email: user.email || '',
                 role: formData.role as Role,
+                accountStatus: formData.role === 'mentor' ? 'pending' : 'active',
                 ageRange: formData.ageRange,
                 cancerType: formData.cancerType,
                 diagnosisStage: formData.diagnosisStage,
@@ -148,10 +149,14 @@ export default function OnboardingScreen() {
             // Update global state to prevent infinite loop
             setProfileComplete(true);
 
-            // Refresh auth context to update actualUserId
+            // Refresh auth context to update actualUserId and accountStatus
             await refreshAuth();
 
-            router.replace('/(tabs)/three');
+            if (formData.role === 'mentor') {
+                router.replace('/pending-approval');
+            } else {
+                router.replace('/(tabs)/three');
+            }
         } catch (error) {
             console.error('Error saving profile:', error);
             Alert.alert('Error', 'Failed to save profile. Please try again.');
