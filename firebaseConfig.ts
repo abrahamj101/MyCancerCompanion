@@ -1,5 +1,6 @@
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
@@ -18,8 +19,10 @@ const app = initializeApp(firebaseConfig);
 // Initialize Cloud Firestore and get a reference to the service
 export const FIREBASE_DB = getFirestore(app);
 
-// Initialize Firebase Authentication
-// Note: We handle persistence manually in AuthContext using AsyncStorage
-export const FIREBASE_AUTH = getAuth(app);
+// Initialize Firebase Authentication with AsyncStorage persistence so
+// auth state survives app restarts (fixes the "memory persistence" warning).
+export const FIREBASE_AUTH = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+});
 
 export default app;

@@ -1,6 +1,5 @@
-import * as Google from 'expo-auth-session/providers/google';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import {
     createUserWithEmailAndPassword,
     signOut as firebaseSignOut,
@@ -16,8 +15,12 @@ import { FIREBASE_AUTH } from '../firebaseConfig';
 import { getUserByUid, saveUserProfile } from '../services/UserService';
 import { storage } from '../utils/storage';
 
-// Complete any pending auth sessions
-WebBrowser.maybeCompleteAuthSession();
+// Configure native Google Sign-In (runs once at module level)
+GoogleSignin.configure({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    offlineAccess: false,
+});
 
 interface AuthContextType {
     isAuthenticated: boolean;
@@ -25,8 +28,9 @@ interface AuthContextType {
     setProfileComplete: (value: boolean) => void;
     isLoading: boolean;
     actualUserId: string | null;
-    userRole: 'patient' | 'mentor' | null;
+    userRole: 'patient' | 'mentor' | 'admin' | null;
     userEmail: string | null;
+    accountStatus: 'active' | 'pending' | 'suspended' | null;
     signInWithEmail: (email: string, password: string) => Promise<void>;
     signUpWithEmail: (email: string, password: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
@@ -41,73 +45,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [actualUserId, setActualUserId] = useState<string | null>(null);
-    const [userRole, setUserRole] = useState<'patient' | 'mentor' | null>(null);
+    const [userRole, setUserRole] = useState<'patient' | 'mentor' | 'admin' | null>(null);
     const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [accountStatus, setAccountStatus] = useState<'active' | 'pending' | 'suspended' | null>(null);
     const router = useRouter();
 
 
-    // Use Expo auth proxy for Google OAuth
-    const redirectUri = 'https://auth.expo.io/@abrahamj101/mycancercompanion';
-
-    // Log the redirect URI prominently
-    console.log('\n═══════════════════════════════════════════════════');
-    console.log('🔗 COPY THIS REDIRECT URI TO GOOGLE CONSOLE:');
-    console.log('   https://auth.expo.io/@abrahamj101/mycancercompanion');
-    console.log('═══════════════════════════════════════════════════');
-
-    const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-        clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-        redirectUri: redirectUri,
-    });
-
-    // Log request object status
-    useEffect(() => {
-        console.log('📋 [AuthContext] Google Auth Request Status:');
-        console.log('  Request object:', request ? 'READY ✅' : 'NOT READY ❌');
-        if (request) {
-            console.log('  Request URL:', request.url?.substring(0, 100) + '...');
-            console.log('  Request Redirect URI:', request.redirectUri);
-        }
-    }, [request]);
-
-    // Handle Google Auth response
-    useEffect(() => {
-        console.log('📨 [AuthContext] Google Auth Response:', response?.type || 'null');
-
-        if (response?.type === 'success') {
-            console.log('✅ [AuthContext] Google OAuth SUCCESS!');
-            console.log('  Response params:', JSON.stringify(response.params, null, 2));
-            const { id_token } = response.params;
-            console.log('  ID Token received:', id_token ? 'YES ✅' : 'NO ❌');
-            handleGoogleCredential(id_token);
-        } else if (response?.type === 'error') {
-            console.error('❌ [AuthContext] Google OAuth ERROR:', response.error);
-            console.error('  Error params:', JSON.stringify((response as any).params, null, 2));
-        } else if (response?.type === 'cancel') {
-            console.log('🚫 [AuthContext] Google OAuth CANCELLED by user');
-        } else if (response) {
-            console.log('  Other response type:', response.type);
-            if ('params' in response) {
-                console.log('  Params:', JSON.stringify((response as any).params));
-            }
-        }
-    }, [response]);
-
-    const handleGoogleCredential = async (idToken: string) => {
-        try {
-            console.log('🔐 [AuthContext] Processing Google credential...');
-            const credential = GoogleAuthProvider.credential(idToken);
-            const userCredential = await signInWithCredential(FIREBASE_AUTH, credential);
-
-            // Auth state change listener will handle the rest
-            console.log('✅ [AuthContext] Google sign-in successful:', userCredential.user.uid);
-        } catch (error) {
-            console.error('❌ [AuthContext] Google credential error:', error);
-            throw error;
-        }
-    };
 
     // Check if user has a complete profile in Firestore
     const checkUserProfile = async (user: FirebaseUser): Promise<boolean> => {
@@ -119,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('✅ [AuthContext] Profile complete - user has onboarded');
                 // Store user role
                 setUserRole(userProfile.role);
+                setAccountStatus(userProfile.accountStatus || 'active');
                 return true;
             } else {
                 console.log('⚠️ [AuthContext] Profile incomplete or missing');
@@ -175,8 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         setProfileComplete(false);
 
-        console.log('✅ [AuthContext] Sign up complete, redirecting to onboarding...');
-        router.replace('/onboarding');
+        console.log('✅ [AuthContext] Sign up complete, redirecting to T&C...');
+        router.replace('/terms-and-conditions');
     };
 
     // Sign in with email and password
@@ -199,37 +143,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (hasProfile) {
             // Also update the onboarding completed flag
             await storage.setItem('onboardingCompletedForUID', userCredential.user.uid);
-            console.log('✅ [AuthContext] Sign in complete, redirecting to Community tab...');
-            router.replace('/(tabs)/three');
+            console.log('✅ [AuthContext] Sign in complete, layout will handle redirection.');
         } else {
             // Create skeleton if missing
             await createSkeletonProfile(userCredential.user);
-            console.log('✅ [AuthContext] Sign in complete, redirecting to onboarding...');
-            router.replace('/onboarding');
+            console.log('✅ [AuthContext] Sign in complete, redirecting to T&C...');
+            router.replace('/terms-and-conditions');
         }
     };
 
-    // Sign in with Google
+    // Sign in with Google — uses native SDK, no browser redirect needed.
+    // Requires a development or production build (not plain Expo Go).
     const signInWithGoogle = async () => {
-        console.log('🔵 [AuthContext] Initiating Google sign-in...');
-        console.log('  Request status:', request ? 'READY' : 'NOT READY');
-
-        if (!request) {
-            console.error('❌ [AuthContext] Google auth request not ready!');
-            console.error('  Check that Client IDs are set in .env file');
-            throw new Error('Google auth not configured. Please add Google Client IDs.');
-        }
-
-        console.log('  Calling promptAsync()...');
         try {
-            const result = await promptAsync();
-            console.log('  promptAsync() returned:', result?.type);
-        } catch (error) {
-            console.error('❌ [AuthContext] promptAsync() error:', error);
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+            const response = await GoogleSignin.signIn();
+            // The shape of the response differs by SDK version;
+            // idToken is at response.data.idToken (v13+) or response.idToken (v10-12).
+            const idToken = (response as any).data?.idToken ?? (response as any).idToken;
+            if (!idToken) throw new Error('Google Sign-In did not return an ID token.');
+
+            const credential = GoogleAuthProvider.credential(idToken);
+            const userCredential = await signInWithCredential(FIREBASE_AUTH, credential);
+
+            // For brand-new Google users, create a skeleton Firestore profile.
+            // onAuthStateChanged fires next and handles navigation.
+            const existingProfile = await getUserByUid(userCredential.user.uid);
+            if (!existingProfile) {
+                await createSkeletonProfile(userCredential.user);
+                router.replace('/terms-and-conditions');
+            }
+            console.log('[AuthContext] Google sign-in successful:', userCredential.user.uid);
+        } catch (error: any) {
+            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+                // User dismissed the picker — not a real error, don't rethrow
+                console.log('[AuthContext] Google sign-in cancelled by user');
+                return;
+            }
+            console.error('[AuthContext] Google sign-in error:', error);
             throw error;
         }
     };
-    // The response will be handled by the useEffect above
 
     // Sign out
     const signOut = async () => {
@@ -242,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setActualUserId(null);
             setUserRole(null);
             setUserEmail(null);
+            setAccountStatus(null);
             setProfileComplete(null);
             setIsAuthenticated(false);
 
@@ -266,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const userProfile = await getUserByUid(storedUID);
                 if (userProfile) {
                     setUserRole(userProfile.role);
+                    setAccountStatus(userProfile.accountStatus || 'active');
                     console.log('✅ [AuthContext] Auth refreshed - UID:', storedUID, 'Role:', userProfile.role);
                 } else {
                     console.log('✅ [AuthContext] Auth refreshed - UID:', storedUID);
@@ -311,6 +267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setActualUserId(null);
                 setUserRole(null);
                 setUserEmail(null);
+                setAccountStatus(null);
                 setProfileComplete(null);
                 // Note: We don't clear AsyncStorage here because Firebase might just be loading
                 // AsyncStorage is only cleared on explicit signOut()
@@ -331,6 +288,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             actualUserId,
             userRole,
             userEmail,
+            accountStatus,
             signInWithEmail,
             signUpWithEmail,
             signInWithGoogle,

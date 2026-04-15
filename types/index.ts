@@ -13,7 +13,7 @@ export interface User {
     uid: string;
     firstName: string; // HIPAA: First name only
     email: string;
-    role: 'patient' | 'mentor';
+    role: 'patient' | 'mentor' | 'admin';
     ageRange: string;
     cancerType: string;
     diagnosisStage: string;
@@ -27,6 +27,9 @@ export interface User {
     createdAt: Timestamp | any;
     building?: string; // Optional: Building/location (e.g., "Sweetwater Pavilion")
     floor?: string; // Optional: Floor number (e.g., "1", "2", "3")
+    termsAccepted?: boolean; // Whether user has accepted T&C
+    termsAcceptedAt?: Timestamp | any; // When T&C were accepted
+    accountStatus?: 'active' | 'pending' | 'suspended' | 'rejected'; // 'pending' = awaiting admin approval (mentors)
 }
 
 // ============================================================================
